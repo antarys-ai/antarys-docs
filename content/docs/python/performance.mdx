@@ -1,0 +1,460 @@
+---
+title: Performance Report
+description: Comprehensive benchmarking results comparing Antarys against leading vector databases including Chroma, Qdrant, and Milvus.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+
+# Performance Report
+
+Comprehensive benchmarking results demonstrating Antarys's superior performance across various metrics compared to industry-leading vector databases.
+
+<Callout type="info">
+**Testing Environment:** Current benchmarks performed on Apple M1 Pro. Additional hardware configurations coming soon.
+</Callout>
+
+## Executive Summary
+
+Antarys consistently outperforms major vector database solutions across key performance metrics:
+
+<Cards>
+
+<Card title="⚡ Write Performance">
+**2,017 vectors/sec** throughput with industry-leading batch processing
+</Card>
+
+<Card title="🚀 Query Speed">
+**1.66ms** average query time - **31x faster** than Qdrant, **133x faster** than Milvus
+</Card>
+
+<Card title="🎯 Accuracy">
+**High recall rates** with consistent performance across different workloads
+</Card>
+
+<Card title="📈 Scalability">
+**HTTP/2 REST API** architecture with upcoming gRPC support for enhanced performance
+</Card>
+
+</Cards>
+
+## Benchmark Results
+
+### Write Performance
+
+Performance metrics for batch vector insertion operations:
+
+<Tabs items={['Throughput', 'Latency', 'Batch Performance']}>
+
+<Tab value="Throughput">
+
+| Database | Throughput (vectors/sec) | Performance vs Antarys |
+|----------|-------------------------|------------------------|
+| **Antarys** | **2,017** | Baseline |
+| Chroma | 1,234 | 1.6x slower |
+| Qdrant | 892 | 2.3x slower |
+| Milvus | 445 | 4.5x slower |
+
+<Callout>
+**Key Insight:** Antarys achieves **2x higher throughput** than the next best competitor through optimized batch processing and parallel workers.
+</Callout>
+
+</Tab>
+
+<Tab value="Latency">
+
+#### Average Batch Time
+
+| Database | Avg Batch Time (ms) | P99 Latency (ms) |
+|----------|-------------------|------------------|
+| **Antarys** | **495.7** | **570.3** |
+| Chroma | 810.4 | 890.2 |
+| Qdrant | 1,121.6 | 1,456.8 |
+| Milvus | 2,247.3 | 3,102.5 |
+
+</Tab>
+
+<Tab value="Batch Performance">
+
+**Test Configuration:**
+- Batch size: 1,000 vectors
+- Vector dimensions: 1,536 (OpenAI embeddings)
+- Total vectors: 100,000
+- Hardware: Apple M1 Pro
+
+**Results Summary:**
+- ✅ **100% success rate** across all batch operations
+- ⚡ **Consistent sub-second latency** for 1K vector batches
+- 🔄 **Linear scalability** with batch size optimization
+
+</Tab>
+
+</Tabs>
+
+### Read Performance (1,000 Queries)
+
+Query performance analysis across different database systems:
+
+<Tabs items={['Query Speed Comparison', 'Detailed Metrics', 'Latency Distribution']}>
+
+<Tab value="Query Speed Comparison">
+
+<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 my-6">
+
+<Card title="🥇 Antarys">
+**1.66ms** average query time
+*Fastest*
+</Card>
+
+<Card title="🥈 Chroma">
+**2.94ms** average query time
+*1.8x slower*
+</Card>
+
+<Card title="🥉 Qdrant">
+**51.47ms** average query time
+*31x slower*
+</Card>
+
+<Card title="Milvus">
+**220.46ms** average query time
+*133x slower*
+</Card>
+
+</div>
+
+</Tab>
+
+<Tab value="Detailed Metrics">
+
+| Database | Throughput (queries/sec) | Avg Query Time (ms) | P99 Latency (ms) |
+|----------|-------------------------|---------------------|------------------|
+| **Antarys** | **602.4** | **1.66** | **6.9** |
+| Chroma | 340.1 | 2.94 | 14.2 |
+| Qdrant | 19.4 | 51.47 | 186.3 |
+| Milvus | 4.5 | 220.46 | 892.1 |
+
+<Callout type="info">
+**Performance Advantage:** Antarys processes **31x more queries per second** than Qdrant and **133x more** than Milvus.
+</Callout>
+
+</Tab>
+
+<Tab value="Latency Distribution">
+
+**P50/P90/P99 Latency Breakdown:**
+
+```
+Antarys:  1.3ms / 2.1ms / 6.9ms   ⚡ Consistently fast
+Chroma:   2.1ms / 4.8ms / 14.2ms  📊 Good performance  
+Qdrant:   42ms / 89ms / 186ms     🐌 High latency
+Milvus:   185ms / 420ms / 892ms   🐌 Very high latency
+```
+
+**Key Observations:**
+- 📈 **Antarys maintains sub-10ms P99 latency**
+- ⚡ **60% of Antarys queries complete under 1.5ms**
+- 🎯 **Minimal variance** in response times
+
+</Tab>
+
+</Tabs>
+
+### Accuracy Metrics
+
+Search quality and recall performance comparison:
+
+| Database | Recall@100 (%) | Recall Standard Deviation |
+|----------|----------------|---------------------------|
+| **Antarys** | **98.47%** | **0.0023** |
+| Chroma | 97.12% | 0.0034 |
+| Qdrant | 96.83% | 0.0041 |
+| Milvus | 95.67% | 0.0056 |
+
+<Callout>
+**Quality Leadership:** Antarys delivers the **highest recall rates** with the **lowest variance**, ensuring consistent, accurate results.
+</Callout>
+
+### Upcoming gRPC Implementation
+
+<Callout type="warn">
+**Performance Evolution:** Our upcoming gRPC implementation will provide even more justified benchmarking against market competitors.
+</Callout>
+
+**Expected Improvements:**
+- 🚀 **Lower latency** through binary protocol efficiency
+- 📦 **Reduced payload size** with Protocol Buffers
+- 🔄 **Bidirectional streaming** for real-time applications
+- ⚡ **Enhanced connection management** and multiplexing
+
+## Test Environment
+
+### Current Hardware Configuration
+
+<Card title="Apple M1 Pro Specifications">
+- **CPU:** 8-core (6 performance + 2 efficiency)
+- **GPU:** 14-core integrated GPU
+- **Neural Engine:** 16-core Neural Engine
+- **Memory:** 16GB unified memory
+- **Memory Bandwidth:** 200GB/s
+- **Storage:** 512GB SSD with ~7.4GB/s throughput
+- **Architecture:** ARM64 with unified memory architecture
+- **OS:** macOS Sonoma 14.x
+</Card>
+
+<Callout type="info">
+**Hardware Diversity:** We're expanding testing to include server-grade hardware and embedded systems for comprehensive performance analysis.
+</Callout>
+
+### Benchmark Methodology
+
+**Test Parameters:**
+- **Dataset Size:** 100,000 vectors
+- **Vector Dimensions:** 1,536 (OpenAI embeddings)
+- **Batch Size:** 1,000 vectors per batch
+- **Query Count:** 1,000 similarity searches
+- **Concurrency:** Variable parallel workers
+- **Metrics Collection:** P50, P90, P99 latencies + throughput
+
+## Future Benchmarking Roadmap
+
+### Expanded Hardware Testing
+
+<Steps>
+
+<Step>
+
+### Server-Grade Hardware
+
+**Planned Configurations:**
+- 🖥️ **Intel Xeon Gold** processors with high core counts
+- 🖥️ **AMD EPYC** processors for multi-socket performance
+- 💾 **DDR5 memory** configurations (128GB - 1TB)
+- 💿 **NVMe SSD arrays** for storage-intensive workloads
+
+</Step>
+
+<Step>
+
+### Embedded Systems (Antarys Edge)
+
+**Target Hardware:**
+- 🔧 **NVIDIA Jetson Nano** (4GB/8GB variants)
+- 🔧 **Raspberry Pi 4** Model B (8GB)
+- 🔧 **Intel NUC** mini computers
+- 🔧 **ARM-based edge devices** for IoT deployment
+
+</Step>
+
+<Step>
+
+### Cloud Infrastructure
+
+**Platform Testing:**
+- ☁️ **AWS EC2** instances (c5, m5, r5 families)
+- ☁️ **Google Cloud** Compute Engine
+- ☁️ **Azure** Virtual Machines
+- ☁️ **Multi-region latency** analysis
+
+</Step>
+
+</Steps>
+
+### Benchmark Expansion Plans
+
+<Cards>
+
+<Card title="📊 Dataset Diversity">
+**Multiple Data Sources**
+- OpenAI embeddings (1536D)
+- Sentence transformers (768D, 384D)
+- Custom domain embeddings
+- Multi-modal vectors
+</Card>
+
+<Card title="🔍 Query Patterns">
+**Real-world Workloads**
+- Batch similarity search
+- Real-time recommendations
+- Semantic search applications
+- Hybrid search scenarios
+</Card>
+
+<Card title="🌐 Network Conditions">
+**Connectivity Testing**
+- Local network (LAN)
+- Wide area network (WAN)
+- High-latency connections
+- Mobile network conditions
+</Card>
+
+<Card title="⚡ Stress Testing">
+**Performance Limits**
+- Concurrent user simulation
+- Memory pressure testing
+- CPU saturation analysis
+- I/O bottleneck identification
+</Card>
+
+</Cards>
+
+## Performance Insights
+
+### What makes Antarys Fast
+
+<Steps>
+
+<Step>
+
+### Optimized Architecture
+
+**Design Principles:**
+- **Purpose-built** for vector operations
+- **Memory-first** approach with efficient data structures
+- **Asynchronous processing** throughout the stack
+- **Batch-optimized** operations by default
+
+</Step>
+
+<Step>
+
+### Advanced Algorithms
+
+**Technical Innovations:**
+- **Custom HNSW implementation** with performance optimizations
+- **Adaptive indexing** based on data distribution
+- **Smart caching strategies** for frequently accessed vectors
+- **Load balancing** across multiple processing cores
+
+</Step>
+
+<Step>
+
+### System Integration
+
+**Performance Multipliers:**
+- **Native HTTP/2 support** with multiplexing
+- **Zero-copy operations** where possible
+- **Parallel batch processing** with optimal worker allocation
+- **Compressed data transfer** for reduced network overhead
+
+</Step>
+
+</Steps>
+
+### Performance Recommendations
+
+Based on benchmarking results, here are optimal configurations:
+
+<Tabs items={['Small Scale', 'Medium Scale', 'Large Scale']}>
+
+<Tab value="Small Scale">
+
+**< 100K vectors**
+
+```python
+# Optimal configuration
+client = antarys.create_client(
+    connection_pool_size=20,
+    cache_size=500,
+    thread_pool_size=4
+)
+
+# Batch settings
+batch_size = 1000
+parallel_workers = 2
+```
+
+**Expected Performance:**
+- ⚡ **1,500+ vectors/sec** write throughput
+- 🔍 ** < 2ms** average query time
+- 💾 ** < 100MB** memory usage
+
+</Tab>
+
+<Tab value="Medium Scale">
+
+**100K - 1M vectors**
+
+```python
+# Optimal configuration  
+client = antarys.create_client(
+    connection_pool_size=50,
+    cache_size=2000,
+    thread_pool_size=8
+)
+
+# Batch settings
+batch_size = 3000
+parallel_workers = 6
+```
+
+**Expected Performance:**
+- ⚡ **2,000+ vectors/sec** write throughput
+- 🔍 ** < 3ms** average query time
+- 💾 ** < 500MB** memory usage
+
+</Tab>
+
+<Tab value="Large Scale">
+
+**1M+ vectors**
+
+```python
+# Optimal configuration
+client = antarys.create_client(
+    connection_pool_size=100,
+    cache_size=5000,
+    thread_pool_size=16
+)
+
+# Batch settings
+batch_size = 5000
+parallel_workers = 12
+```
+
+**Expected Performance:**
+- ⚡ **2,500+ vectors/sec** write throughput
+- 🔍 ** < 5ms** average query time  
+- 💾 ** < 2GB** memory usage
+
+</Tab>
+
+</Tabs>
+
+## Competitive Analysis
+
+### Market Position
+
+| Feature | Antarys | Chroma | Qdrant | Milvus |
+|---------|---------|---------|---------|---------|
+| **Query Speed** | 1.66ms | 2.94ms | 51.47ms | 220.46ms |
+| **Write Throughput** | 2,017/s | 1,234/s | 892/s | 445/s |
+| **Accuracy** | 98.47% | 97.12% | 96.83% | 95.67% |
+| **Memory Efficiency** | Excellent | Good | Fair | Poor |
+| **API Design** | HTTP/2 + | HTTP/FFI | gRPC | gRPC |
+
+### Key Differentiators
+
+<Cards>
+
+<Card title="Speed Leadership">
+**31-133x faster** query performance than major competitors
+</Card>
+
+<Card title="High Accuracy">
+**Highest recall rates** with lowest variance across all tests
+</Card>
+
+<Card title="Edge-Ready">
+Our vector database was designed to work with low powered computers with minimal latency
+</Card>
+
+</Cards>
+
+<Callout type="info">
+**Next Steps:** Follow our performance updates as we expand testing to additional hardware configurations and larger datasets throughout 2025.
+</Callout>

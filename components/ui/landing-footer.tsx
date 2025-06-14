@@ -1,11 +1,13 @@
 import React from "react";
 
 import { Footer, FooterBottom } from "@/components/ui/footer";
+import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 import Link from "next/link";
 
 export function LandingFooter() {
   return (
     <div>
+      <LandingFooterText />
       <footer className="w-full bg-background px-4 z-10">
         <div className="mx-auto max-w-container">
           <Footer className="pt-0">
@@ -26,6 +28,14 @@ export function LandingFooter() {
           </Footer>
         </div>
       </footer>
+    </div>
+  );
+}
+
+export function LandingFooterText() {
+  return (
+    <div className="h-[8rem] sm:md-[10rem] md:h-[12rem] lg:h-[17rem] flex items-center justify-center">
+      <TextHoverEffect text="Antarys AI" />
     </div>
   );
 }

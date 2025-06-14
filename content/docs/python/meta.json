@@ -1,0 +1,10 @@
+{
+  "title": "Python Client",
+  "pages": [
+    "index",
+    "install", 
+    "vector_ops",
+    "samples",
+    "performance"
+  ]
+}

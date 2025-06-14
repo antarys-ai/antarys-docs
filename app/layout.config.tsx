@@ -1,12 +1,6 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+import { Twitter, MessageCircle, Code, Laptop2Icon } from "lucide-react";
 
-/**
- * Shared layout configurations
- *
- * you can customise layouts individually from:
- * Home Layout: app/(home)/layout.tsx
- * Docs Layout: app/docs/layout.tsx
- */
 export const baseOptions: BaseLayoutProps = {
   nav: {
     title: (
@@ -28,8 +22,30 @@ export const baseOptions: BaseLayoutProps = {
       </div>
     ),
   },
-  // see https://fumadocs.dev/docs/ui/navigation/links
-  links: [],
+  links: [
+    {
+      text: "API",
+      url: "/docs/",
+      icon: <Code className="w-4 h-4" />,
+    },
+    {
+      text: "Samples",
+      url: "/docs/python/samples",
+      icon: <Laptop2Icon className="w-4 h-4" />,
+    },
+    {
+      text: "Twitter",
+      url: "https://x.com/antarys_ai",
+      icon: <Twitter className="w-4 h-4" />,
+      external: true,
+    },
+    {
+      text: "Discord",
+      url: "https://discord.gg/antarys",
+      icon: <MessageCircle className="w-4 h-4" />,
+      external: true,
+    },
+  ],
   themeSwitch: {
     enabled: false,
   },

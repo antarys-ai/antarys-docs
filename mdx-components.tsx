@@ -1,10 +1,15 @@
-import defaultMdxComponents from 'fumadocs-ui/mdx';
-import type { MDXComponents } from 'mdx/types';
+import defaultMdxComponents from "fumadocs-ui/mdx";
+import { ImageZoom } from "fumadocs-ui/components/image-zoom";
+import type { MDXComponents } from "mdx/types";
+import { AntarysEdgeFeatures } from "./components/ui/antarys-edge-features";
+import DatabaseWithRestApi from "./components/ui/database-with-rest-api";
 
-// use this function to get MDX components, you will need it for rendering MDX
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
+    img: (props) => <ImageZoom {...(props as any)} />,
+    AntarysEdgeFeatures,
+    DatabaseWithRestApi,
     ...components,
   };
 }

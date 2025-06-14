@@ -1,0 +1,527 @@
+---
+title: Quick Start
+description: Python client for Antarys vector database, optimized for large-scale vector operations with built-in caching, parallel processing, and dimension validation.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+# Antarys Python SDK
+
+<DatabaseWithRestApi />
+
+Python client for Antarys vector database, optimized for large-scale vector operations with built-in caching, parallel processing, and dimension validation.
+
+<Callout type="info">
+**Requirements:** Python 3.7+ and asyncio support required
+</Callout>
+<Callout type="warn">
+**Warning:** since Antarys is in preview major API can occur and bugs might be appear, report [your issues here](https://github.com/antarys-ai/antarys-python/issues)
+</Callout>
+
+## Installation
+
+<Steps>
+
+<Step>
+
+### Install the Package
+
+Install via [pip package](https://pypi.org/project/antarys/)
+
+```bash
+pip install antarys
+```
+
+</Step>
+
+<Step>
+
+### Optional Performance Dependencies
+
+For accelerated performance, install additional dependencies:
+
+```bash
+pip install numba lz4
+```
+
+<Callout type="warn">
+These dependencies significantly improve performance for large-scale operations but are not required for basic usage.
+</Callout>
+
+</Step>
+
+</Steps>
+
+## Quick Start
+
+Here's a complete example to get you started:
+
+```python
+import asyncio
+from antarys import Client
+
+async def main():
+    # Initialize client with performance optimizations
+    client = Client(
+        host="http://localhost:8080",
+        connection_pool_size=100,  # Auto-sized based on CPU count
+        use_http2=True,
+        cache_size=1000,
+        thread_pool_size=16
+    )
+
+    # Create collection
+    await client.create_collection(
+        name="my_vectors",
+        dimensions=1536,
+        enable_hnsw=True,
+        shards=16
+    )
+
+    vectors = client.vector_operations("my_vectors")
+
+    # Upsert vectors
+    await vectors.upsert([
+        {"id": "1", "values": [0.1] * 1536, "metadata": {"category": "A"}},
+        {"id": "2", "values": [0.2] * 1536, "metadata": {"category": "B"}}
+    ])
+
+    # Query similar vectors
+    results = await vectors.query(
+        vector=[0.1] * 1536,
+        top_k=10,
+        include_metadata=True
+    )
+
+    await client.close()
+
+asyncio.run(main())
+```
+
+<Callout>
+**Pro Tip:** Always remember to call `await client.close()` to properly cleanup resources!
+</Callout>
+
+## Core Concepts
+
+### Collections
+
+Collections are containers for your vectors with specific configurations for optimal performance.
+
+<Tabs items={['Create', 'List', 'Delete']}>
+
+<Tab value="Create">
+
+```python
+# Create collection with optimized parameters
+await client.create_collection(
+    name="vectors",
+    dimensions=1536,  # Required: vector dimensions
+    enable_hnsw=True,  # Enable HNSW indexing for fast ANN
+    shards=16,  # Parallel processing shards
+    m=16,  # HNSW connectivity parameter
+    ef_construction=200  # HNSW construction quality
+)
+```
+
+</Tab>
+
+<Tab value="List">
+
+```python
+# List collections
+collections = await client.list_collections()
+for collection in collections:
+    print(f"Collection: {collection['name']}")
+```
+
+</Tab>
+
+<Tab value="Delete">
+
+```python
+# Delete collection
+await client.delete_collection("vectors")
+```
+
+<Callout type="warn">
+**Warning:** This operation is irreversible and will delete all vectors in the collection.
+</Callout>
+
+</Tab>
+
+</Tabs>
+
+### Vector Operations
+
+#### Single Vector Operations
+
+<Cards>
+
+<Card title="Upsert Vectors" href="#upsert">
+Insert or update vectors in your collection
+</Card>
+
+<Card title="Query Vectors" href="#query">
+Search for similar vectors using various algorithms
+</Card>
+
+<Card title="Delete Vectors" href="#delete">
+Remove vectors by ID from your collection
+</Card>
+
+</Cards>
+
+#### Upsert
+
+```python
+vectors = client.vector_operations("my_collection")
+
+data = [
+    {
+        "id": "1",
+        "values": [0.1, 0.2, 0.3],  # Must match collection dimensions
+        "metadata": {"category": "example", "timestamp": 1234567890}
+    },
+    {
+        "id": "2", 
+        "values": [0.4, 0.5, 0.6],  # Must match collection dimensions
+        "metadata": {"category": "example", "timestamp": 1234567891}
+    }
+]
+
+# Upsert single vector
+await vectors.upsert(data)
+```
+
+#### Batch Operations for Large Scale Data
+
+<Callout type="info">
+**Performance Tip:** Use batch operations for inserting large amounts of data to maximize throughput.
+</Callout>
+
+```python
+# Upload multiple vectors in batches for large scale
+batch = []
+for i in range(1000):
+    vector_record = {
+        "id": f"vector_{i}",
+        "vector": [random.random() for _ in range(1536)],  # Use "vector" key
+        "metadata": {
+            "category": f"category_{i % 5}",
+            "timestamp": int(time.time()),
+            "batch_id": 1
+        }
+    }
+    batch.append(vector_record)
+
+result = await vectors.upsert_batch(batch)
+```
+
+#### Vector Query
+
+<Tabs items={['Single Query', 'Batch Query', 'Advanced Query']}>
+
+<Tab value="Single Query">
+
+```python
+# Single vector similarity search
+results = await vectors.query(
+    vector=[0.1] * 1536,
+    top_k=10,
+    include_values=False,  # Exclude vector values for faster response
+    include_metadata=True,  # Include metadata in results
+    filter={"category": "A"},  # Metadata filtering
+    use_ann=True,  # Use approximate nearest neighbors (HNSW)
+    threshold=0.7  # Minimum similarity filter (0.0 for all results)
+)
+
+for match in results["matches"]:
+    print(f"ID: {match['id']}, Score: {match['score']}")
+```
+
+</Tab>
+
+<Tab value="Batch Query">
+
+```python
+# Multiple vector queries in parallel
+query_vectors = [[0.1] * 1536, [0.2] * 1536, [0.3] * 1536]
+
+batch_results = await vectors.batch_query(
+    vectors=query_vectors,
+    top_k=5,
+    include_metadata=True,
+    validate_dimensions=True
+)
+
+for i, result in enumerate(batch_results["results"]):
+    print(f"Query {i}: {len(result['matches'])} matches")
+```
+
+</Tab>
+
+<Tab value="Advanced Query">
+
+```python
+# Advanced query with HNSW parameters
+results = await vectors.query(
+    vector=query_vector,
+    top_k=100,
+    include_values=False,  # Reduce response size
+    include_metadata=True,
+    use_ann=True,  # Fast approximate search
+    ef_search=200,  # Higher quality (vs speed)
+    skip_cache=False  # Leverage cache
+)
+```
+
+</Tab>
+
+</Tabs>
+
+#### Delete Vectors
+
+```python
+# Delete vectors by ID
+await vectors.delete(["vector_1", "vector_2", "vector_3"])
+
+# Get vector by ID
+vector_data = await vectors.get_vector("vector_1")
+
+# Count vectors in collection
+count = await vectors.count_vectors()
+```
+
+## Performance Optimization
+
+### Client Configuration
+
+<Callout type="info">
+**Auto-sizing:** Many parameters auto-size based on your system's CPU count for optimal performance.
+</Callout>
+
+```python
+client = Client(
+    host="http://localhost:8080",
+
+    # Connection Pool Optimization
+    connection_pool_size=100,  # High concurrency (auto: CPU_COUNT * 5)
+    timeout=120,  # Extended timeout for large operations
+
+    # HTTP/2 and Compression
+    use_http2=True,  # Enable HTTP/2 multiplexing
+    compression=True,  # Enable response compression
+
+    # Caching Configuration
+    cache_size=1000,  # Client-side query cache
+    cache_ttl=300,  # Cache TTL in seconds
+
+    # Threading and Parallelism
+    thread_pool_size=16,  # CPU-bound operations (auto: CPU_COUNT * 2)
+
+    # Retry Configuration
+    retry_attempts=5,  # Network resilience
+
+    # Debug Mode
+    debug=True  # Performance monitoring
+)
+```
+
+### Batch Operation Tuning
+
+<Steps>
+
+<Step>
+
+#### Optimal Batch Upsert
+
+```python
+# Optimal batch upsert parameters
+await vectors.upsert(
+    vectors=large_dataset,
+    batch_size=5000,  # Optimal for network efficiency
+    parallel_workers=8,  # Match server capability
+    validate_dimensions=True,  # Prevent dimension errors
+    show_progress=True
+)
+```
+
+</Step>
+
+<Step>
+
+#### High-Throughput Query Configuration
+
+```python
+# High-throughput query configuration
+results = await vectors.query(
+    vector=query_vector,
+    top_k=100,
+    include_values=False,  # Reduce response size
+    include_metadata=True,
+    use_ann=True,  # Fast approximate search
+    ef_search=200,  # Higher quality (vs speed)
+    skip_cache=False  # Leverage cache
+)
+```
+
+</Step>
+
+</Steps>
+
+### Server-Side Optimization
+
+#### HNSW Index Parameters
+
+<Callout type="info">
+**HNSW Tuning:** Higher `ef_construction` values improve search quality but increase indexing time.
+</Callout>
+
+```python
+await client.create_collection(
+    name="high_performance",
+    dimensions=1536,
+    enable_hnsw=True,
+
+    # HNSW Tuning
+    m=16,  # Connectivity (16-64 for high recall)
+    ef_construction=200,  # Graph construction quality (200-800)
+    shards=32,  # Parallel processing (match CPU cores)
+)
+
+# Query-time HNSW parameters
+results = await vectors.query(
+    vector=query_vector,
+    ef_search=200,  # Search quality (100-800) | Higher means accuracy over speed and ram consumption 
+    use_ann=True  # Enable HNSW acceleration
+)
+```
+
+#### Memory and Resource Management
+
+```python
+# Force commit for persistence
+await client.commit()
+
+# Clear client-side caches
+await client.clear_cache()
+await vectors.clear_cache()
+
+# Proper resource cleanup
+await client.close()
+```
+
+## Advanced Features
+
+### Dimension Validation
+
+```python
+# Automatic dimension validation
+is_valid = await vectors.validate_vector_dimensions([0.1] * 1536)
+
+# Get collection dimensions
+dims = await vectors.get_collection_dimensions()
+```
+
+### Cache Performance Monitoring
+
+```python
+# Get cache statistics
+stats = vectors.get_cache_stats()
+print(f"Cache hit rate: {stats['hit_rate']:.2%}")
+print(f"Cache size: {stats['cache_size']}")
+```
+
+<Callout type="info">
+Monitor cache hit rates to optimize your query patterns and cache settings.
+</Callout>
+
+## Data Types
+
+The client uses strongly typed interfaces for better development experience:
+
+```python
+from antarys.types import VectorRecord, SearchResult, SearchParams
+
+# Type-safe vector record
+record: VectorRecord = {
+    "id": "example",
+    "values": [0.1, 0.2, 0.3],
+    "metadata": {"key": "value"}
+}
+
+# Search parameters
+params = SearchParams(
+    vector=[0.1] * 1536,
+    top_k=10,
+    include_metadata=True,
+    threshold=0.8
+)
+```
+
+## Health Monitoring
+
+Monitor your Antarys server and collection health:
+
+<Tabs items={['Server Health', 'Server Info', 'Collection Stats']}>
+
+<Tab value="Server Health">
+
+```python
+# Check server health
+health = await client.health()
+print(f"Status: {health['status']}")
+```
+
+</Tab>
+
+<Tab value="Server Info">
+
+```python
+# Get server information
+info = await client.info()
+print(f"Version: {info['version']}")
+print(f"Uptime: {info['uptime']}")
+```
+
+</Tab>
+
+<Tab value="Collection Stats">
+
+```python
+# Collection statistics
+collection_info = await client.describe_collection("vectors")
+print(f"Vector count: {collection_info.get('vector_count', 0)}")
+print(f"Index type: {collection_info.get('index_type', 'none')}")
+```
+
+</Tab>
+
+</Tabs>
+
+<Callout type="warn">
+**Best Practice:** Regularly monitor your server health and collection statistics in production environments.
+</Callout>
+
+## Next Steps
+
+<Cards>
+
+<Card title="API Reference" href="/docs/python/vector_ops">
+Explore the complete Vector Operations API
+</Card>
+
+<Card title="Samples" href="/docs/python/samples">
+See useful samples and use cases with Python
+</Card>
+
+
+<Card title="Troubleshooting" href="https://github.com/antarys-ai/antarys-python/issues">
+Report Issues on Github
+</Card>
+
+</Cards>

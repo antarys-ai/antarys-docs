@@ -1,0 +1,498 @@
+---
+title: Installation
+description: Complete installation guide for the Antarys Python client with pip, virtual environments, and building from source.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+# Installing Antarys Python Client
+
+Learn how to install the Antarys Python client for your vector database operations.
+
+<Callout type="info">
+**Requirements:** Python 3.7+ is required. We recommend using Python 3.8 or higher for optimal performance.
+</Callout>
+
+## Quick Installation
+
+The fastest way to get started is with pip:
+
+```bash
+pip install antarys
+```
+
+<Callout>
+**That's it!** You can now start using Antarys in your Python projects.
+</Callout>
+
+## Installation Methods
+
+<Cards>
+
+<Card title="📦 Via pip" href="#pip-installation">
+Install directly from PyPI (recommended)
+</Card>
+
+<Card title="🐍 With Virtual Environment" href="#virtual-environment">
+Install in an isolated environment (best practice)
+</Card>
+
+<Card title="🔨 Build from Source" href="#build-from-source">
+Build the latest development version
+</Card>
+
+</Cards>
+
+## pip Installation
+
+<Steps>
+
+<Step>
+
+### Install the Package
+
+Install the latest stable version from PyPI:
+
+```bash
+pip install antarys
+```
+
+</Step>
+
+<Step>
+
+### Install Optional Dependencies
+
+For enhanced performance, install optional dependencies:
+
+```bash
+pip install antarys
+pip install numba lz4
+```
+
+<Callout type="info">
+**Performance Boost:** These dependencies can significantly improve performance for large-scale operations.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Verify Installation
+
+Test your installation:
+
+```python
+import antarys
+print(f"Antarys version: {antarys.__version__}")
+```
+
+</Step>
+
+</Steps>
+
+## Virtual Environment Installation
+
+<Callout type="warn">
+**Best Practice:** Always use virtual environments to avoid package conflicts and maintain clean project dependencies.
+</Callout>
+
+<Tabs items={['venv', 'conda', 'pipenv', 'poetry']}>
+
+<Tab value="venv">
+
+<Steps>
+
+<Step>
+
+### Create Virtual Environment
+
+```bash
+# Create a new virtual environment
+python3 -m venv antarys-env
+
+# Alternative: specify Python version
+python3.9 -m venv antarys-env
+```
+
+</Step>
+
+<Step>
+
+### Activate Virtual Environment
+
+<Tabs items={['Linux/macOS', 'Windows', 'Git Bash (Windows)']}>
+
+<Tab value="Linux/macOS">
+
+```bash
+source antarys-env/bin/activate
+```
+
+</Tab>
+
+<Tab value="Windows">
+
+```cmd
+antarys-env\Scripts\activate
+```
+
+</Tab>
+
+<Tab value="Git Bash (Windows)">
+
+```bash
+source antarys-env/Scripts/activate
+```
+
+</Tab>
+
+</Tabs>
+
+</Step>
+
+<Step>
+
+### Install Antarys
+
+```bash
+# Upgrade pip first (recommended)
+pip install --upgrade pip
+
+# Install Antarys
+pip install antarys
+
+# Install with performance dependencies
+pip install antarys[performance]
+```
+
+</Step>
+
+<Step>
+
+### Verify Installation
+
+```python
+python -c "import antarys; print(f'Antarys {antarys.__version__} installed successfully!')"
+```
+
+<Callout>
+**Success!** Your virtual environment is ready with Antarys installed.
+</Callout>
+
+</Step>
+
+</Steps>
+
+</Tab>
+
+<Tab value="conda">
+
+<Steps>
+
+<Step>
+
+### Create Conda Environment
+
+```bash
+# Create environment with specific Python version
+conda create -n antarys-env python=3.9
+
+# Activate environment
+conda activate antarys-env
+```
+
+</Step>
+
+<Step>
+
+### Install Antarys
+
+```bash
+# Install via pip (recommended)
+pip install antarys
+
+# Or try conda-forge (if available)
+conda install -c conda-forge antarys
+```
+
+</Step>
+
+</Steps>
+
+</Tab>
+
+<Tab value="pipenv">
+
+<Steps>
+
+<Step>
+
+### Initialize Pipenv Project
+
+```bash
+# Create project directory
+mkdir my-antarys-project
+cd my-antarys-project
+
+# Initialize pipenv
+pipenv install antarys
+```
+
+</Step>
+
+<Step>
+
+### Activate Shell
+
+```bash
+pipenv shell
+```
+
+</Step>
+
+</Steps>
+
+</Tab>
+
+<Tab value="poetry">
+
+<Steps>
+
+<Step>
+
+### Add Antarys to Project
+
+```bash
+poetry add antarys
+```
+
+</Step>
+
+<Step>
+
+### Activate Environment
+
+```bash
+poetry shell
+```
+
+</Step>
+
+</Steps>
+
+</Tab>
+
+</Tabs>
+
+## Build from Source
+
+<Steps>
+
+<Step>
+
+### Prerequisites
+
+Install required build tools:
+
+<Tabs items={['Linux/macOS', 'Windows']}>
+
+<Tab value="Linux/macOS">
+
+```bash
+# Install build essentials
+pip install --upgrade pip setuptools wheel build
+```
+
+</Tab>
+
+<Tab value="Windows">
+
+```cmd
+# Install Python build tools
+pip install --upgrade pip setuptools wheel build
+```
+
+</Tab>
+
+</Tabs>
+
+</Step>
+
+<Step>
+
+### Clone Repository
+
+```bash
+# Clone the repository
+git clone https://github.com/antarys-ai/antarys-python.git
+cd antarys-python
+```
+
+<Callout type="info">
+**Repository:** The source code is available at [github.com/antarys-ai/antarys-python](https://github.com/antarys-ai/antarys-python)
+</Callout>
+
+</Step>
+
+<Step>
+
+### Create Virtual Environment
+
+```bash
+python3 -m venv myenv
+source myenv/bin/activate
+```
+
+</Step>
+
+<Step>
+
+### Install Dependencies
+
+```bash
+# Install development dependencies
+pip install --upgrade pip
+pip install -r requirements-dev.txt
+```
+
+</Step>
+
+<Step>
+
+### Build Package
+
+```bash
+# Build source distribution and wheel
+python3 setup.py sdist bdist_wheel --universal
+```
+
+<Callout type="info">
+**Build Output:** The built packages will be available in the `dist/` directory.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Install Built Package
+
+```bash
+# Install the locally built package
+pip install dist/antarys-*.whl
+
+# Or install in development mode for active development
+pip install -e .
+```
+
+</Step>
+
+<Step>
+
+### Verify Installation
+
+```python
+python -c "import antarys; print(f'Built Antarys {antarys.__version__} successfully!')"
+```
+
+</Step>
+
+</Steps>
+
+## Getting Help
+
+<Cards>
+
+<Card title="🐛 Report Issues" href="https://github.com/antarys-ai/antarys-python/issues">
+Found a bug or need help with installation?
+</Card>
+
+<Card title="💬 Community Support" href="https://discord.gg/qt7sbK6M">
+Join our discord community for questions and discussions
+</Card>
+
+</Cards>
+
+### Reporting Issues
+
+If you encounter problems with the Python client, please create an issue on GitHub:
+
+<Steps>
+
+<Step>
+
+### Check Existing Issues
+
+Visit the [issues page](https://github.com/antarys-ai/antarys-python/issues) to see if your problem has already been reported.
+
+</Step>
+
+<Step>
+
+### Create New Issue
+
+Click **"New Issue"** and choose the appropriate template:
+
+- 🐛 **Bug Report** - For installation or runtime issues
+- 💡 **Feature Request** - For new functionality
+- 📖 **Documentation** - For documentation improvements
+- ❓ **Question** - For general questions
+
+</Step>
+
+<Step>
+
+### Provide Details
+
+Include the following information:
+
+```bash
+# System information
+python --version
+pip --version
+
+# Package information
+pip show antarys
+
+# Error logs (if any)
+pip install antarys --verbose
+```
+
+<Callout type="info">
+**Template:** Use our issue templates to provide all necessary information for faster resolution.
+</Callout>
+
+</Step>
+
+</Steps>
+
+### Issue Template Example
+
+```markdown
+**Environment:**
+- OS: [e.g., Ubuntu 20.04, Windows 10, macOS 12]
+- Python version: [e.g., 3.9.7]
+- Antarys version: [e.g., 1.0.0]
+
+**Installation method:** [pip, conda, source]
+
+**Error message:**
+
+[Paste the complete error message here]
+
+**Steps to reproduce:**
+1. Run command: `pip install antarys`
+2. See error: ...
+
+**Expected behavior:**
+Package should install successfully.
+```
+
+## Next Steps
+
+<Callout>
+**Ready to code?** Now that you have Antarys installed, check out the [Samples](/docs/python/samples) to begin building your dream AI app!
+</Callout>
