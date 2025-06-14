@@ -1,4 +1,4 @@
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
 /**
  * Shared layout configurations
@@ -10,19 +10,28 @@ import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 export const baseOptions: BaseLayoutProps = {
   nav: {
     title: (
-      <>
-        <svg
-          width="24"
-          height="24"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-label="Logo"
-        >
-          <circle cx={12} cy={12} r={12} fill="currentColor" />
-        </svg>
-        My App
-      </>
+      <div className="flex items-center font-light">
+        <img
+          src="/logo-black.png"
+          alt="Antarys"
+          width={48}
+          className="block dark:hidden"
+        />
+        <img
+          src="/logo.png"
+          alt="Antarys"
+          width={48}
+          className="hidden dark:block"
+        />
+        <p className="mx-2">|</p>
+        <p className="font-bold">Antarys</p>
+      </div>
     ),
   },
   // see https://fumadocs.dev/docs/ui/navigation/links
   links: [],
+  themeSwitch: {
+    enabled: false,
+  },
+  githubUrl: "https://github.com/antarys-ai",
 };
