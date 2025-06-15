@@ -123,10 +123,10 @@ export const metadata: Metadata = {
     "batch vector operations",
     "parallel vector processing",
   ],
-  authors: [{ name: "Antarys AI", url: "https://antarys.ai" }],
+  authors: [{ name: "Antarys Docs", url: "https://docs.antarys.ai" }],
   creator: "Antarys AI",
   publisher: "Antarys AI",
-  metadataBase: new URL("https://antarys.ai"),
+  metadataBase: new URL("https://docs.antarys.ai"),
   alternates: {
     canonical: "https://antarys.ai",
   },
@@ -142,14 +142,14 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Antarys - Turn any Data into Intelligent Data",
+    title: "Antarys Docs - Turn any Data into Intelligent Data",
     description:
       "AI embeddings and Large Language Models depend on your vector data and we are transforming the paradigm of AI data industry",
-    url: "https://antarys.ai/",
+    url: "https://docs.antarys.ai/",
     siteName: "Antarys.ai",
     images: [
       {
-        url: "https://antarys.ai/logo.png",
+        url: "https://docs.antarys.ai/frame_big.png",
         width: 1200,
         height: 630,
         alt: "Antarys AI - High-Performance Vector Database",
@@ -162,10 +162,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@antarys_ai",
     creator: "@antarys_ai",
-    title: "Antarys - Turn any Data into Intelligent Data",
+    title: "Antarys Docs - Turn any Data into Intelligent Data",
     description:
       "AI embeddings and Large Language Models depend on your vector data and we are transforming the paradigm of AI data industry",
-    images: ["https://antarys.ai/frame_big.png"],
+    images: ["https://docs.antarys.ai/frame_big.png"],
   },
   icons: {
     icon: [
@@ -179,6 +179,9 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
   category: "technology",
   classification: "AI Database Technology",
+  other: {
+    "google-site-verification": "aFEiuRq_u5QXOnrlqWOJUH3gS6pHDN4RxLMneWYNiMA",
+  },
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
