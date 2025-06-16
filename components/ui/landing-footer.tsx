@@ -1,7 +1,7 @@
 import React from "react";
+import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 
 import { Footer, FooterBottom } from "@/components/ui/footer";
-import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 import Link from "next/link";
 
 export function LandingFooter() {
@@ -14,6 +14,10 @@ export function LandingFooter() {
             <FooterBottom className="mt-0 flex flex-col items-center gap-4 sm:flex-col md:flex-row">
               <div>© 2025 Antarys AI. All rights reserved</div>
               <div className="flex items-center gap-4">
+                <Link href={"https://www.antarys.ai/privacy"} target="_blank">
+                  Privacy Policy
+                </Link>
+                <span className="text-white"> | </span>
                 <Link target="_blank" href={"https://x.com/antarys_ai"}>
                   X
                 </Link>
