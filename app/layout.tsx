@@ -4,6 +4,7 @@ import { Geist, Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import RouterTransition from "@/components/ui/router-transition";
+import { cn } from "@/lib/utils";
 
 const customFont = Geist({
   subsets: ["latin"],
@@ -186,19 +187,13 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={customFont.className} suppressHydrationWarning>
+    <html lang="en" className={cn(customFont.className, "dark")} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <RouterTransition>
-          <RootProvider
-            theme={{
-              forcedTheme: "dark",
-              enableSystem: false,
-              defaultTheme: "dark",
-              enabled: false,
-            }}
-          >
-            {children}
-          </RootProvider>
+          <RootProvider theme={{
+            defaultTheme: "dark",
+            enableSystem: false
+          }}>{children}</RootProvider>
         </RouterTransition>
       </body>
     </html>
