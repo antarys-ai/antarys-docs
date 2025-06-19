@@ -189,7 +189,16 @@ export default function Layout({ children }: { children: ReactNode }) {
     <html lang="en" className={customFont.className} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <RouterTransition>
-          <RootProvider>{children}</RootProvider>
+          <RootProvider
+            theme={{
+              forcedTheme: "dark",
+              enableSystem: false,
+              defaultTheme: "dark",
+              enabled: false,
+            }}
+          >
+            {children}
+          </RootProvider>
         </RouterTransition>
       </body>
     </html>
