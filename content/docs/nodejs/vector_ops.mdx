@@ -1,0 +1,756 @@
+---
+title: Vector Operations
+description: Complete guide to vector CRUD operations in Antarys - Create, Read, Update, and Delete vectors with advanced querying capabilities using TypeScript/Node.js.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+# Vector Operations
+
+Comprehensive guide to performing Create, Read, Update, and Delete (CRUD) operations on vectors in Antarys using TypeScript/Node.js.
+
+<Callout type="info">
+**Getting Started:** Make sure you have a collection created and a client initialized before performing vector operations.
+</Callout>
+
+## Overview
+
+The `VectorOperations` class provides high-performance interfaces for all vector operations with built-in optimizations including:
+
+- **Automatic dimension validation**
+- **Worker thread parallelization for batch processing**
+- **Client-side caching for queries**
+- **HTTP/2 connection pooling and retry logic**
+- **Memory-efficient processing with buffer pools**
+
+<Cards>
+
+<Card title="📥 Upsert Operations" href="#upsert-operations">
+Insert or update vectors efficiently
+</Card>
+
+<Card title="🔍 Query Operations" href="#query-operations">
+Search and retrieve similar vectors
+</Card>
+
+<Card title="🗑️ Delete Operations" href="#delete-operations">
+Remove vectors by ID or criteria
+</Card>
+
+<Card title="📊 Utility Operations" href="#utility-operations">
+Count, validate, and monitor vectors
+</Card>
+
+</Cards>
+
+## Getting Vector Operations Interface
+
+```typescript
+import { createClient } from 'antarys';
+
+// Initialize client and get vector operations interface
+const client = createClient('http://localhost:8080');
+const vectors = client.vectorOperations('my_collection');
+
+// Alternative method with explicit typing
+const vectors: VectorOperations = client.vectorOperations('my_collection');
+```
+
+## Upsert Operations
+
+### Single Vector Upsert
+
+<Tabs items={['Basic Upsert', 'With Metadata', 'With Validation']}>
+
+<Tab value="Basic Upsert">
+
+```typescript
+// Insert or update a single vector
+await vectors.upsert([
+    {
+        id: 'vector_1',
+        values: [0.1, 0.2, 0.3, 0.4],  // Your vector data
+        metadata: { category: 'example' }
+    }
+]);
+```
+
+</Tab>
+
+<Tab value="With Metadata">
+
+```typescript
+// Upsert with rich metadata
+await vectors.upsert([
+    {
+        id: 'doc_123',
+        values: Array(1536).fill(0.1),  // OpenAI embedding dimensions
+        metadata: {
+            title: 'Machine Learning Basics',
+            author: 'Data Scientist',
+            category: 'education',
+            tags: ['ml', 'ai', 'tutorial'],
+            createdAt: '2025-01-15',
+            sourceUrl: 'https://example.com/ml-basics'
+        }
+    }
+]);
+```
+
+</Tab>
+
+<Tab value="With Validation">
+
+```typescript
+// Upsert with automatic dimension validation
+const result = await vectors.upsert(
+    [
+        {
+            id: 'validated_vector',
+            values: Array(512).fill(0.1),  // Must match collection dimensions
+            metadata: { validated: true }
+        }
+    ],
+    {
+        validateDimensions: true  // Enable validation
+    }
+);
+
+console.log(`Upserted ${result.upserted_count} vectors`);
+```
+
+</Tab>
+
+</Tabs>
+
+### Batch Upsert Operations
+
+<Callout type="info">
+**Performance Tip:** Use batch operations for inserting large amounts of data to maximize throughput and minimize network overhead.
+</Callout>
+
+<Steps>
+
+<Step>
+
+### Prepare Batch Data
+
+```typescript
+// Prepare large batch of vectors
+const batchVectors = [];
+for (let i = 0; i < 10000; i++) {
+    batchVectors.push({
+        id: `batch_vector_${i}`,
+        values: Array.from({ length: 512 }, () => Math.random()),
+        metadata: {
+            batchId: Math.floor(i / 1000),  // Group by thousands
+            createdAt: Date.now(),
+            category: `category_${i % 5}`
+        }
+    });
+}
+```
+
+</Step>
+
+<Step>
+
+### Optimized Batch Upsert
+
+```typescript
+// High-performance batch upsert
+const result = await vectors.upsert(batchVectors, {
+    batchSize: 1000,          // Optimal batch size
+    showProgress: true,       // Show progress bar
+    parallelWorkers: 8,       // Parallel processing
+    validateDimensions: true  // Ensure data quality
+});
+
+console.log(`Successfully upserted ${result.upserted_count} vectors`);
+```
+
+<Callout type="warn">
+**Memory Management:** For very large datasets (100k+ vectors), consider processing in chunks to manage memory usage effectively.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Advanced Batch Configuration
+
+```typescript
+// Fine-tuned batch upsert for maximum performance
+const result = await vectors.upsert(largeDataset, {
+    batchSize: 5000,          // Larger batches for network efficiency
+    parallelWorkers: 16,      // More workers for CPU-bound tasks
+    validateDimensions: true,
+    showProgress: true
+});
+
+// Monitor performance
+const elapsedTime = performance.now() - startTime;
+console.log(`Upsert rate: ${result.upserted_count / (elapsedTime / 1000):.2f} vectors/sec`);
+```
+
+</Step>
+
+</Steps>
+
+### Vector Format Requirements
+
+<Callout type="info">
+**Data Format:** Vectors can be provided with either `values` or `vector` field names for compatibility.
+</Callout>
+
+```typescript
+// Both formats are supported
+const vectorWithValues = {
+    id: 'vec1',
+    values: [0.1, 0.2, 0.3],  // Standard format
+    metadata: { type: 'standard' }
+};
+
+const vectorWithVector = {
+    id: 'vec2', 
+    vector: [0.1, 0.2, 0.3],  // Alternative format
+    metadata: { type: 'alternative' }
+};
+
+// Both work with the same upsert call
+await vectors.upsert([vectorWithValues, vectorWithVector]);
+```
+
+## Query Operations
+
+### Basic Vector Search
+
+<Tabs items={['Simple Query', 'Filtered Query', 'Advanced Query']}>
+
+<Tab value="Simple Query">
+
+```typescript
+// Basic similarity search
+const results = await vectors.query({
+    vector: [0.1, 0.2, 0.3, 0.4],  // Query vector
+    topK: 5,                       // Return top 5 matches
+    includeMetadata: true          // Include metadata in results
+});
+
+// Process results
+for (const match of results.matches) {
+    console.log(`ID: ${match.id}, Score: ${match.score.toFixed(4)}`);
+    if (match.metadata) {
+        console.log(`  Metadata:`, match.metadata);
+    }
+}
+```
+
+</Tab>
+
+<Tab value="Filtered Query">
+
+```typescript
+// Query with metadata filtering
+const results = await vectors.query({
+    vector: queryVector,
+    topK: 10,
+    includeMetadata: true,
+    filter: {
+        category: 'education',  // Filter by category
+        author: 'Data Scientist'  // Multiple filters
+    },
+    threshold: 0.7  // Only results above 70% similarity
+});
+
+console.log(`Found ${results.matches.length} filtered matches`);
+```
+
+</Tab>
+
+<Tab value="Advanced Query">
+
+```typescript
+// Advanced query with HNSW parameters
+const results = await vectors.query({
+    vector: queryVector,
+    topK: 20,
+    includeValues: false,     // Exclude vectors for faster response
+    includeMetadata: true,
+    useAnn: true,            // Use approximate nearest neighbors
+    efSearch: 200,           // Higher accuracy (vs speed)
+    threshold: 0.5,          // Similarity threshold
+    skipCache: false         // Use cache if available
+});
+
+// Results include similarity scores
+for (const match of results.matches) {
+    const similarity = match.score;
+    console.log(`Vector ${match.id}: ${similarity.toFixed(3)} similarity`);
+}
+```
+
+</Tab>
+
+</Tabs>
+
+### Batch Query Operations
+
+<Callout type="info">
+**Batch Queries:** Process multiple query vectors in parallel for maximum efficiency.
+</Callout>
+
+```typescript
+// Prepare multiple query vectors
+const queryVectors = [
+    Array(512).fill(0.1),  // Query 1
+    Array(512).fill(0.2),  // Query 2
+    Array(512).fill(0.3),  // Query 3
+];
+
+// Batch query for parallel processing
+const batchResults = await vectors.batchQuery(
+    queryVectors.map(vector => ({
+        vector,
+        topK: 5,
+        includeMetadata: true
+    }))
+);
+
+// Process batch results
+for (let i = 0; i < batchResults.results.length; i++) {
+    console.log(`\nQuery ${i + 1} results:`);
+    for (const match of batchResults.results[i].matches) {
+        console.log(`  ${match.id}: ${match.score.toFixed(3)}`);
+    }
+}
+```
+
+### Query Performance Optimization
+
+**Approximate Nearest Neighbors**
+
+```typescript
+const results = await vectors.query({
+    vector: queryVector,
+    useAnn: true,        // Enable HNSW
+    efSearch: 200        // Quality vs speed
+});
+```
+
+**Client-side Result Caching**
+
+```typescript
+// First query - cache miss
+const results1 = await vectors.query({
+    vector: queryVector,
+    topK: 5
+});
+
+// Second identical query - cache hit
+const results2 = await vectors.query({
+    vector: queryVector,
+    topK: 5
+});
+
+// Check cache performance
+const stats = vectors.getCacheStats();
+console.log(`Cache hit rate: ${(stats.hitRate * 100).toFixed(2)}%`);
+```
+
+**Metadata Filtering**
+
+```typescript
+// Efficient pre-filtering
+const results = await vectors.query({
+    vector: queryVector,
+    filter: { category: 'active' },
+    topK: 10
+});
+```
+
+### Query Result Format
+
+```typescript
+// Query results structure
+interface QueryResults {
+    matches: Array<{
+        id: string;
+        score: number;                    // Similarity score
+        values?: number[];                // Optional: vector values
+        metadata?: Record<string, any>;   // Optional: metadata
+    }>;
+}
+```
+
+## Delete Operations
+
+### Delete by IDs
+
+<Tabs items={['Single Delete', 'Batch Delete', 'Conditional Delete']}>
+
+<Tab value="Single Delete">
+
+```typescript
+// Delete a single vector
+const result = await vectors.deleteVectors(['vector_123']);
+
+console.log(`Deleted: ${result.deleted?.length || 0}`);
+console.log(`Failed: ${result.failed?.length || 0}`);
+```
+
+</Tab>
+
+<Tab value="Batch Delete">
+
+```typescript
+// Delete multiple vectors
+const vectorIds = Array.from({ length: 100 }, (_, i) => `vector_${i + 100}`);
+
+const result = await vectors.deleteVectors(vectorIds);
+
+console.log(`Successfully deleted ${result.deleted?.length || 0} vectors`);
+if (result.failed?.length) {
+    console.log(`Failed to delete ${result.failed.length} vectors`);
+}
+```
+
+</Tab>
+
+<Tab value="Conditional Delete">
+
+```typescript
+// Delete vectors based on query results
+// First, find vectors to delete
+const results = await vectors.query({
+    vector: referenceVector,
+    filter: { status: 'deprecated' },
+    topK: 1000  // Get up to 1000 deprecated vectors
+});
+
+// Extract IDs and delete
+const idsToDelete = results.matches.map(match => match.id);
+if (idsToDelete.length > 0) {
+    const deleteResult = await vectors.deleteVectors(idsToDelete);
+    console.log(`Deleted ${deleteResult.deleted?.length || 0} deprecated vectors`);
+}
+```
+
+</Tab>
+
+</Tabs>
+
+### Delete Performance
+
+<Callout type="warn">
+**Cache Invalidation:** Deleting vectors automatically invalidates relevant cache entries to maintain consistency.
+</Callout>
+
+```typescript
+// Efficient bulk deletion
+const largeDeleteBatch = Array.from({ length: 10000 }, (_, i) => `temp_vector_${i}`);
+
+// Monitor deletion performance
+const startTime = performance.now();
+const result = await vectors.deleteVectors(largeDeleteBatch);
+const endTime = performance.now();
+
+const deleteRate = (result.deleted?.length || 0) / ((endTime - startTime) / 1000);
+console.log(`Deletion rate: ${deleteRate.toFixed(2)} vectors/sec`);
+```
+
+## Utility Operations
+
+### Vector Retrieval
+
+```typescript
+// Get specific vector by ID
+const vectorData = await vectors.getVector('vector_123');
+
+if (vectorData) {
+    console.log(`Vector ID: ${vectorData.id}`);
+    console.log(`Vector values: ${vectorData.values?.slice(0, 5)}...`);  // First 5 values
+    console.log(`Metadata:`, vectorData.metadata || {});
+} else {
+    console.log('Vector not found');
+}
+```
+
+### Collection Statistics
+
+```typescript
+// Get vector count
+const totalVectors = await vectors.countVectors();
+console.log(`Total vectors in collection: ${totalVectors}`);
+
+// Get collection dimensions
+const dimensions = await vectors.getCollectionDimensions();
+console.log(`Collection dimensions: ${dimensions}`);
+```
+
+### Dimension Validation
+
+<Steps>
+
+<Step>
+
+### Validate Single Vector
+
+```typescript
+// Validate vector dimensions
+const testVector = Array(512).fill(0.1);
+const isValid = await vectors.validateVectorDimensions(testVector);
+
+if (isValid) {
+    console.log('Vector dimensions are correct');
+} else {
+    const expected = await vectors.getCollectionDimensions();
+    console.log(`Invalid dimensions. Expected: ${expected}, Got: ${testVector.length}`);
+}
+```
+
+</Step>
+
+<Step>
+
+### Batch Validation
+
+```typescript
+// Validate batch of vectors before upsert
+const vectorsToValidate = [
+    { id: 'v1', values: Array(512).fill(0.1) },
+    { id: 'v2', values: Array(512).fill(0.2) },
+    { id: 'v3', values: Array(256).fill(0.3) },  // Wrong dimensions
+];
+
+try {
+    await vectors.upsert(vectorsToValidate, {
+        validateDimensions: true  // Will catch dimension errors
+    });
+} catch (error) {
+    console.log(`Validation error: ${error.message}`);
+}
+```
+
+</Step>
+
+</Steps>
+
+### Cache Management
+
+```typescript
+// Get cache performance statistics
+const cacheStats = vectors.getCacheStats();
+
+if (cacheStats.enabled) {
+    console.log(`Cache hit rate: ${(cacheStats.hitRate * 100).toFixed(2)}%`);
+    console.log(`Cache size: ${cacheStats.cacheSize} entries`);
+    console.log(`Total hits: ${cacheStats.hits}`);
+    console.log(`Total misses: ${cacheStats.misses}`);
+} else {
+    console.log('Caching is disabled');
+}
+
+// Clear cache if needed
+await vectors.clearCache();
+console.log('Cache cleared');
+```
+
+## Advanced Patterns
+
+### Streaming Upsert
+
+For very large datasets, implement streaming upsert:
+
+```typescript
+async function streamUpsert(
+    vectors: VectorOperations, 
+    dataGenerator: AsyncGenerator<VectorRecord>, 
+    batchSize = 1000
+): Promise<number> {
+    let batch: VectorRecord[] = [];
+    let totalProcessed = 0;
+    
+    for await (const vectorData of dataGenerator) {
+        batch.push(vectorData);
+        
+        if (batch.length >= batchSize) {
+            const result = await vectors.upsert(batch, {
+                validateDimensions: true,
+                showProgress: true
+            });
+            totalProcessed += result.upserted_count;
+            batch = [];  // Reset batch
+            
+            // Optional: yield control to prevent blocking
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+    }
+    
+    // Process final batch
+    if (batch.length > 0) {
+        const result = await vectors.upsert(batch, {
+            validateDimensions: true
+        });
+        totalProcessed += result.upserted_count;
+    }
+    
+    return totalProcessed;
+}
+
+// Usage
+async function* dataGenerator(): AsyncGenerator<VectorRecord> {
+    for (let i = 0; i < 100000; i++) {
+        yield {
+            id: `stream_vector_${i}`,
+            values: Array.from({ length: 512 }, () => Math.random()),
+            metadata: { batch: Math.floor(i / 1000) }
+        };
+    }
+}
+
+const total = await streamUpsert(vectors, dataGenerator());
+console.log(`Streamed ${total} vectors`);
+```
+
+### Similarity Search with Re-ranking
+
+```typescript
+interface HybridSearchOptions {
+    vectorWeight: number;
+    textWeight: number;
+    topK: number;
+}
+
+async function hybridSearch(
+    vectors: VectorOperations, 
+    queryVector: number[], 
+    textQuery: string, 
+    options: HybridSearchOptions = { vectorWeight: 0.7, textWeight: 0.3, topK: 10 }
+): Promise<any> {
+    const { vectorWeight, textWeight, topK } = options;
+    
+    // First stage: Vector similarity search
+    const initialResults = await vectors.query({
+        vector: queryVector,
+        topK: topK * 3,  // Get more candidates
+        includeMetadata: true,
+        useAnn: true
+    });
+    
+    // Second stage: Re-rank based on text similarity
+    const candidates = [];
+    for (const match of initialResults.matches) {
+        const textScore = calculateTextSimilarity(
+            textQuery, 
+            match.metadata?.text || ''
+        );
+        
+        // Combine scores
+        const combinedScore = vectorWeight * match.score + textWeight * textScore;
+        candidates.push({
+            ...match,
+            combinedScore
+        });
+    }
+    
+    // Sort by combined score and return topK
+    candidates.sort((a, b) => b.combinedScore - a.combinedScore);
+    return { matches: candidates.slice(0, topK) };
+}
+
+function calculateTextSimilarity(query: string, text: string): number {
+    // Simple text similarity calculation
+    // This is a placeholder - implement your text similarity logic here
+    return Math.random() * 0.5;
+}
+```
+
+### Error Handling and Retry Logic
+
+```typescript
+interface RetryOptions {
+    maxRetries: number;
+    backoffFactor: number;
+}
+
+async function robustUpsert(
+    vectors: VectorOperations, 
+    vectorData: VectorRecord[], 
+    options: RetryOptions = { maxRetries: 3, backoffFactor: 2 }
+): Promise<any> {
+    const { maxRetries, backoffFactor } = options;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const result = await vectors.upsert(vectorData, {
+                validateDimensions: true,
+                showProgress: true
+            });
+            return result;
+            
+        } catch (error: any) {
+            if (error.message.includes('dimension')) {
+                // Dimension validation errors - don't retry
+                console.log(`Validation error: ${error.message}`);
+                throw error;
+            }
+            
+            if (attempt < maxRetries - 1) {
+                const waitTime = Math.pow(backoffFactor, attempt) * 1000;
+                console.log(`Attempt ${attempt + 1} failed: ${error.message}`);
+                console.log(`Retrying in ${waitTime}ms...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            } else {
+                console.log(`All ${maxRetries} attempts failed`);
+                throw error;
+            }
+        }
+    }
+}
+
+// Usage
+try {
+    const result = await robustUpsert(vectors, myVectors);
+    console.log(`Successfully upserted ${result.upserted_count} vectors`);
+} catch (error) {
+    console.log(`Upsert failed permanently: ${error.message}`);
+}
+```
+
+## Resource Cleanup
+
+Always properly clean up resources:
+
+```typescript
+// Clean up vector operations
+await vectors.clearCache();
+
+// Clean up client
+await client.close();
+```
+
+<Callout type="info">
+**Best Practice:** Use try/finally blocks or proper async cleanup to ensure resources are freed even if errors occur.
+</Callout>
+
+```typescript
+async function safeVectorOperations() {
+    const client = createClient('http://localhost:8080');
+    const vectors = client.vectorOperations('my_collection');
+    
+    try {
+        // Your vector operations here
+        await vectors.upsert(data);
+        const results = await vectors.query({ vector: queryVector, topK: 10 });
+        
+    } finally {
+        // Always cleanup
+        await vectors.clearCache();
+        await client.close();
+    }
+}
+```

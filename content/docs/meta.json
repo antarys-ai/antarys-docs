@@ -3,6 +3,8 @@
   "pages": [
     "index",
     "python",
+    "nodejs",
+    "cookbook",
     "roadmap"
   ]
 }

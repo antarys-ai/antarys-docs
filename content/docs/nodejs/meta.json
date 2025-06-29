@@ -1,0 +1,7 @@
+{
+  "title": "Node.js Client",
+  "pages": [
+    "index",
+    "vector_ops"
+  ]
+}

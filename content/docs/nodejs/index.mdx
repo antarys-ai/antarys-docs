@@ -1,0 +1,648 @@
+---
+title: Quick Start
+description: TypeScript/Node.js client for Antarys vector database, optimized for large-scale vector operations with HTTP/2, worker threads, and intelligent caching.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+# Antarys Node.js SDK
+
+TypeScript/Node.js client for Antarys vector database, optimized for large-scale vector operations with HTTP/2, worker thread parallelization, and intelligent caching.
+
+<Callout type="info">
+**Requirements:** Node.js 18+ and npm 8+ required
+</Callout>
+
+<Callout type="warn">
+**Warning:** Since Antarys is in preview, major API changes can occur and bugs might appear. Report [your issues here](https://github.com/antarys-ai/antarys-node/issues)
+</Callout>
+
+## Installation
+
+<Steps>
+
+<Step>
+
+### Install the Package
+
+Install via [npm package](https://www.npmjs.com/package/antarys)
+
+```bash
+npm install antarys
+```
+
+```bash
+yarn add antarys
+```
+
+```bash
+pnpm add antarys
+```
+
+</Step>
+
+<Step>
+
+### Optional Performance Dependencies
+
+For enhanced performance, ensure you have the latest Node.js version:
+
+```bash
+node --version  # Should be 18+ for optimal performance
+```
+
+<Callout type="info">
+**Performance Boost:** Node.js 18+ includes HTTP/2 improvements and better worker thread performance that significantly enhance the client.
+</Callout>
+
+</Step>
+
+</Steps>
+
+## Quick Start
+
+Here's a complete example to get you started:
+
+```typescript
+import { createClient } from 'antarys';
+
+async function main() {
+    // Initialize client with performance optimizations
+    const client = createClient('http://localhost:8080', {
+        connectionPoolSize: 100,  // Auto-sized based on CPU count
+        compression: true,
+        cacheSize: 1000,
+        threadPoolSize: 16,
+        debug: true
+    });
+
+    // Create collection
+    await client.createCollection({
+        name: 'my_vectors',
+        dimensions: 1536,
+        enableHnsw: true,
+        shards: 16
+    });
+
+    const vectors = client.vectorOperations('my_vectors');
+
+    // Upsert vectors
+    await vectors.upsert([
+        { id: '1', values: Array(1536).fill(0.1), metadata: { category: 'A' } },
+        { id: '2', values: Array(1536).fill(0.2), metadata: { category: 'B' } }
+    ]);
+
+    // Query similar vectors
+    const results = await vectors.query({
+        vector: Array(1536).fill(0.1),
+        topK: 10,
+        includeMetadata: true
+    });
+
+    await client.close();
+}
+
+main().catch(console.error);
+```
+
+<Callout>
+**Pro Tip:** Always remember to call `await client.close()` to properly cleanup resources!
+</Callout>
+
+## Core Concepts
+
+### Collections
+
+Collections are containers for your vectors with specific configurations for optimal performance.
+
+<Tabs items={['Create', 'List', 'Delete']}>
+
+<Tab value="Create">
+
+```typescript
+// Create collection with optimized parameters
+await client.createCollection({
+    name: 'vectors',
+    dimensions: 1536,        // Required: vector dimensions
+    enableHnsw: true,        // Enable HNSW indexing for fast ANN
+    shards: 16,              // Parallel processing shards
+    m: 16,                   // HNSW connectivity parameter
+    efConstruction: 200      // HNSW construction quality
+});
+```
+
+</Tab>
+
+<Tab value="List">
+
+```typescript
+// List collections
+const collections = await client.listCollections();
+for (const collection of collections) {
+    console.log(`Collection: ${collection.name}`);
+}
+```
+
+</Tab>
+
+<Tab value="Delete">
+
+```typescript
+// Delete collection
+await client.deleteCollection('vectors');
+```
+
+<Callout type="warn">
+**Warning:** This operation is irreversible and will delete all vectors in the collection.
+</Callout>
+
+</Tab>
+
+</Tabs>
+
+### Vector Operations
+
+#### Single Vector Operations
+
+<Cards>
+
+<Card title="Upsert Vectors" href="#upsert">
+Insert or update vectors in your collection
+</Card>
+
+<Card title="Query Vectors" href="#query">
+Search for similar vectors using various algorithms
+</Card>
+
+<Card title="Delete Vectors" href="#delete">
+Remove vectors by ID from your collection
+</Card>
+
+</Cards>
+
+#### Upsert
+
+```typescript
+const vectors = client.vectorOperations('my_collection');
+
+const data = [
+    {
+        id: '1',
+        values: [0.1, 0.2, 0.3],  // Must match collection dimensions
+        metadata: { category: 'example', timestamp: 1234567890 }
+    },
+    {
+        id: '2', 
+        values: [0.4, 0.5, 0.6],  // Must match collection dimensions
+        metadata: { category: 'example', timestamp: 1234567891 }
+    }
+];
+
+// Upsert vectors
+await vectors.upsert(data);
+```
+
+#### Batch Operations for Large Scale Data
+
+<Callout type="info">
+**Performance Tip:** Use batch operations for inserting large amounts of data to maximize throughput.
+</Callout>
+
+```typescript
+// Upload multiple vectors in batches for large scale
+const batch = [];
+for (let i = 0; i < 1000; i++) {
+    const vectorRecord = {
+        id: `vector_${i}`,
+        values: Array.from({ length: 1536 }, () => Math.random()),
+        metadata: {
+            category: `category_${i % 5}`,
+            timestamp: Date.now(),
+            batchId: 1
+        }
+    };
+    batch.push(vectorRecord);
+}
+
+const result = await vectors.upsert(batch, {
+    batchSize: 5000,
+    parallelWorkers: 8,
+    validateDimensions: true,
+    showProgress: true
+});
+```
+
+#### Vector Query
+
+<Tabs items={['Single Query', 'Batch Query', 'Advanced Query']}>
+
+<Tab value="Single Query">
+
+```typescript
+// Single vector similarity search
+const results = await vectors.query({
+    vector: Array(1536).fill(0.1),
+    topK: 10,
+    includeValues: false,     // Exclude vector values for faster response
+    includeMetadata: true,    // Include metadata in results
+    filter: { category: 'A' }, // Metadata filtering
+    useAnn: true,            // Use approximate nearest neighbors (HNSW)
+    threshold: 0.7           // Minimum similarity filter (0.0 for all results)
+});
+
+for (const match of results.matches) {
+    console.log(`ID: ${match.id}, Score: ${match.score}`);
+}
+```
+
+</Tab>
+
+<Tab value="Batch Query">
+
+```typescript
+// Multiple vector queries in parallel
+const queryVectors = [
+    Array(1536).fill(0.1),
+    Array(1536).fill(0.2),
+    Array(1536).fill(0.3)
+];
+
+const batchResults = await vectors.batchQuery(
+    queryVectors.map(vector => ({
+        vector,
+        topK: 5,
+        includeMetadata: true
+    }))
+);
+
+for (let i = 0; i < batchResults.results.length; i++) {
+    console.log(`Query ${i}: ${batchResults.results[i].matches.length} matches`);
+}
+```
+
+</Tab>
+
+<Tab value="Advanced Query">
+
+```typescript
+// Advanced query with HNSW parameters
+const results = await vectors.query({
+    vector: queryVector,
+    topK: 100,
+    includeValues: false,     // Reduce response size
+    includeMetadata: true,
+    useAnn: true,            // Fast approximate search
+    efSearch: 200,           // Higher quality (vs speed)
+    skipCache: false         // Leverage cache
+});
+```
+
+</Tab>
+
+</Tabs>
+
+#### Delete Vectors
+
+```typescript
+// Delete vectors by ID
+await vectors.deleteVectors(['vector_1', 'vector_2', 'vector_3']);
+
+// Get vector by ID
+const vectorData = await vectors.getVector('vector_1');
+
+// Count vectors in collection
+const count = await vectors.countVectors();
+```
+
+## Performance Optimization
+
+### Client Configuration
+
+<Callout type="info">
+**Auto-sizing:** Many parameters auto-size based on your system's CPU count for optimal performance.
+</Callout>
+
+```typescript
+const client = createClient('http://localhost:8080', {
+    // Connection Pool Optimization
+    connectionPoolSize: 100,     // High concurrency (auto: CPU_COUNT * 5)
+    timeout: 120,                // Extended timeout for large operations
+
+    // HTTP/2 and Compression
+    compression: true,           // Enable response compression
+
+    // Caching Configuration
+    cacheSize: 1000,            // Client-side query cache
+    cacheTtl: 300,              // Cache TTL in seconds
+
+    // Threading and Parallelism
+    threadPoolSize: 16,         // CPU-bound operations (auto: CPU_COUNT * 2)
+
+    // Retry Configuration
+    retryAttempts: 5,           // Network resilience
+
+    // Debug Mode
+    debug: true                 // Performance monitoring
+});
+```
+
+### Batch Operation Tuning
+
+<Steps>
+
+<Step>
+
+#### Optimal Batch Upsert
+
+```typescript
+// Optimal batch upsert parameters
+await vectors.upsert(largeDataset, {
+    batchSize: 5000,          // Optimal for network efficiency
+    parallelWorkers: 8,       // Match server capability
+    validateDimensions: true, // Prevent dimension errors
+    showProgress: true
+});
+```
+
+</Step>
+
+<Step>
+
+#### High-Throughput Query Configuration
+
+```typescript
+// High-throughput query configuration
+const results = await vectors.query({
+    vector: queryVector,
+    topK: 100,
+    includeValues: false,     // Reduce response size
+    includeMetadata: true,
+    useAnn: true,            // Fast approximate search
+    efSearch: 200,           // Higher quality (vs speed)
+    skipCache: false         // Leverage cache
+});
+```
+
+</Step>
+
+</Steps>
+
+### Server-Side Optimization
+
+#### HNSW Index Parameters
+
+<Callout type="info">
+**HNSW Tuning:** Higher `efConstruction` values improve search quality but increase indexing time.
+</Callout>
+
+```typescript
+await client.createCollection({
+    name: 'high_performance',
+    dimensions: 1536,
+    enableHnsw: true,
+
+    // HNSW Tuning
+    m: 16,                   // Connectivity (16-64 for high recall)
+    efConstruction: 200,     // Graph construction quality (200-800)
+    shards: 32               // Parallel processing (match CPU cores)
+});
+
+// Query-time HNSW parameters
+const results = await vectors.query({
+    vector: queryVector,
+    efSearch: 200,           // Search quality (100-800) | Higher means accuracy over speed and ram consumption 
+    useAnn: true             // Enable HNSW acceleration
+});
+```
+
+#### Memory and Resource Management
+
+```typescript
+// Force commit for persistence
+await client.commit();
+
+// Clear client-side caches
+await client.clearCache();
+await vectors.clearCache();
+
+// Proper resource cleanup
+await client.close();
+```
+
+## Advanced Features
+
+### Dimension Validation
+
+```typescript
+// Automatic dimension validation
+const isValid = await vectors.validateVectorDimensions([0.1, 0.2, 0.3]);
+
+// Get collection dimensions
+const dims = await vectors.getCollectionDimensions();
+```
+
+### Cache Performance Monitoring
+
+```typescript
+// Get cache statistics
+const stats = vectors.getCacheStats();
+console.log(`Cache hit rate: ${(stats.hitRate * 100).toFixed(2)}%`);
+console.log(`Cache size: ${stats.cacheSize}`);
+```
+
+<Callout type="info">
+Monitor cache hit rates to optimize your query patterns and cache settings.
+</Callout>
+
+## Data Types
+
+The client is fully typed with TypeScript:
+
+```typescript
+import {
+    Client,
+    VectorRecord,
+    SearchParams,
+    SearchResults,
+    CreateCollectionParams,
+    ClientConfig
+} from 'antarys';
+
+// Type-safe vector record
+const record: VectorRecord = {
+    id: 'example',
+    values: [0.1, 0.2, 0.3],
+    metadata: { key: 'value' }
+};
+
+// Search parameters with full type safety
+const params: SearchParams = {
+    vector: [0.1, 0.2, 0.3],
+    topK: 10,
+    includeMetadata: true,
+    threshold: 0.8
+};
+```
+
+## Health Monitoring
+
+Monitor your Antarys server and collection health:
+
+<Tabs items={['Server Health', 'Server Info', 'Collection Stats']}>
+
+<Tab value="Server Health">
+
+```typescript
+// Check server health
+const health = await client.health();
+console.log(`Status: ${health.status}`);
+```
+
+</Tab>
+
+<Tab value="Server Info">
+
+```typescript
+// Get server information
+const info = await client.info();
+console.log(`Version: ${info.version}`);
+console.log(`Uptime: ${info.uptime}`);
+```
+
+</Tab>
+
+<Tab value="Collection Stats">
+
+```typescript
+// Collection statistics
+const collectionInfo = await client.describeCollection('vectors');
+console.log(`Vector count: ${collectionInfo.vectorCount || 0}`);
+console.log(`Index type: ${collectionInfo.indexType || 'none'}`);
+```
+
+</Tab>
+
+</Tabs>
+
+<Callout type="warn">
+**Best Practice:** Regularly monitor your server health and collection statistics in production environments.
+</Callout>
+
+## Simple RAG Example
+
+Here's a complete example showing how to build a Retrieval-Augmented Generation (RAG) system with Antarys and OpenAI:
+
+```typescript
+import OpenAI from 'openai';
+import { createClient } from 'antarys';
+
+class SimpleRAG {
+    private openai: OpenAI;
+    private antarys: any;
+    private vectors: any;
+
+    constructor() {
+        this.openai = new OpenAI();
+        this.antarys = null;
+        this.vectors = null;
+    }
+
+    async init(): Promise<void> {
+        this.antarys = createClient("http://localhost:8080");
+
+        // Try to create collection, ignore if exists
+        try {
+            await this.antarys.createCollection({
+                name: "docs",
+                dimensions: 1536
+            });
+        } catch (error: any) {
+            if (!error.message.includes('already exists')) {
+                throw error;
+            }
+        }
+
+        this.vectors = this.antarys.vectorOperations("docs");
+    }
+
+    async embed(text: string): Promise<number[]> {
+        const response = await this.openai.embeddings.create({
+            model: "text-embedding-3-small",
+            input: text
+        });
+        return response.data[0].embedding;
+    }
+
+    async add(docId: string, content: string): Promise<void> {
+        const embedding = await this.embed(content);
+        await this.vectors.upsert([{
+            id: docId,
+            values: embedding,
+            metadata: { content }
+        }]);
+    }
+
+    async search(query: string, topK: number = 3): Promise<any[]> {
+        const embedding = await this.embed(query);
+        const results = await this.vectors.query({
+            vector: embedding,
+            topK,
+            includeMetadata: true
+        });
+        return results.matches;
+    }
+
+    async generate(query: string, docs: any[]): Promise<string> {
+        const context = docs.map(doc => doc.metadata.content).join("\n");
+        const response = await this.openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [{
+                role: "user",
+                content: `Context: ${context}\n\nQuestion: ${query}`
+            }]
+        });
+        return response.choices[0].message.content || '';
+    }
+
+    async query(question: string, verbose: boolean = false): Promise<[string, any[]]> {
+        const docs = await this.search(question);
+        const answer = await this.generate(question, docs);
+
+        if (verbose) {
+            console.log(`Q: ${question}`);
+            console.log(`A: ${answer}`);
+            docs.forEach(doc => {
+                console.log(`Source: ${doc.id} (${doc.score.toFixed(3)})`);
+            });
+        }
+
+        return [answer, docs];
+    }
+
+    async close(): Promise<void> {
+        if (this.antarys) {
+            await this.antarys.close();
+        }
+    }
+}
+
+async function main() {
+    const rag = new SimpleRAG();
+
+    await rag.init();
+
+    await rag.add("AHNSW",
+        "Unlike traditional sequential HNSW, we are using a different asynchronous approach to HNSW and eliminating thread locks with the help of architectural fine tuning. We will soon release more technical details on the Async HNSW algorithmic approach.");
+    await rag.add("Antarys",
+        "Antarys is a multi-modal vector database and it uses the AHNSW algorithm to enhance its performance to perform semantic searching based on similarity");
+
+    await rag.query("what is Antarys?", true);
+
+    await rag.close();
+}
+
+main().catch(console.error);
+```

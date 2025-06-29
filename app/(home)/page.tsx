@@ -48,9 +48,9 @@ export default function HomePage() {
                 </button>
               </Link>
 
-              <Link href={"/docs"}>
+              <Link href={"http://antarys.ai/"}>
                 <button className="h-12 cursor-pointer rounded-full border border-gray-600 px-8 text-base font-medium text-white hover:bg-white/10">
-                  See Docs
+                  Back To Home
                 </button>
               </Link>
             </div>
