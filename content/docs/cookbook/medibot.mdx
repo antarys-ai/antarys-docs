@@ -1,0 +1,719 @@
+---
+title: Build a Medical Chatbot with Doctor Recommendations
+description: Create an intelligent medical chatbot that analyzes symptoms and recommends verified doctors using Antarys vector database, OpenAI GPT-4, and FastEmbed.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+# Build a Medical Chatbot with Doctor Recommendations
+
+Create a sophisticated medical assistant that combines symptom analysis with personalized doctor recommendations using Antarys vector database and OpenAI's GPT-4.
+
+# Watch Video
+<video width="100%" height="auto" controls>
+  <source src="/videos/medibot.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+## Overview
+
+This cookbook demonstrates building a complete medical chatbot system that can:
+- Classify medical vs. general queries using conversation context
+- Perform preliminary symptom assessment with probability scoring
+- Find relevant doctors using semantic vector search
+- Maintain conversation context for follow-up questions
+- Provide a user-friendly Streamlit interface
+
+[Download the code from this repo](https://github.com/pacifio/medibot)
+
+<Cards>
+
+<Card title="🏥 Medical Assessment" href="#medical-query-classification">
+Intelligent classification and symptom analysis
+</Card>
+
+<Card title="👩‍⚕️ Doctor Matching" href="#doctor-vector-search">
+Semantic search for relevant medical specialists
+</Card>
+
+<Card title="💬 Contextual Chat" href="#conversation-management">
+Context-aware conversation handling
+</Card>
+
+<Card title="🖥️ Streamlit Interface" href="#streamlit-ui">
+Interactive web interface with real-time responses
+</Card>
+
+</Cards>
+
+## System Architecture
+
+### Core Components
+
+```python
+import streamlit as st
+from streamlit_chat import message
+import asyncio
+import openai
+from fastembed import TextEmbedding
+import antarys
+from dataclasses import dataclass
+```
+
+**Key Dependencies:**
+- **OpenAI GPT-4**: Medical query classification and symptom assessment
+- **FastEmbed**: Lightweight embedding model for doctor search
+- **Antarys**: Vector database for storing doctor profiles
+- **Streamlit**: Web interface with chat functionality
+
+## Complete Implementation
+
+### Data Models
+
+<Steps>
+
+<Step>
+
+### Define Core Data Structures
+
+```python
+@dataclass
+class DiseaseAssessment:
+    disease: str
+    probability: float
+    description: str
+
+@dataclass
+class DoctorRecommendation:
+    name: str
+    specialisation: str
+    hospital: str
+    phone: str
+    email: str
+    booking_url: str
+    relevance_score: float
+    degrees: List[str]
+```
+
+These dataclasses structure the chatbot's core outputs: disease assessments with probability scores and doctor recommendations with contact information.
+
+</Step>
+
+</Steps>
+
+### Medical Query Classification
+
+<Steps>
+
+<Step>
+
+### Context-Aware Query Classification
+
+```python
+async def is_medical_query(self, query: str, chat_history: List[Dict] = None) -> bool:
+    chat_history = chat_history or []
+    
+    # Build conversation context from recent exchanges
+    context = ""
+    if chat_history:
+        recent_context = chat_history[-3:]  # Last 3 exchanges
+        context = "\n".join([
+            f"User: {chat['user']}\nBot: {chat['bot'][:200]}..." 
+            for chat in recent_context
+        ])
+    
+    classification_prompt = f"""
+    Analyze the following user message and determine if it's a medical query 
+    that requires symptom assessment and doctor recommendations.
+    
+    Chat context (recent conversation):
+    {context}
+    
+    Current user message: "{query}"
+    
+    A medical query is one where the user is:
+    - Describing physical symptoms or health problems
+    - Asking for medical advice about symptoms
+    - Seeking help for a health condition
+    - Requesting doctor recommendations for a specific medical issue
+    - Following up on previous medical discussions with related questions
+    
+    Consider the conversation context - if the user previously discussed 
+    medical symptoms and is now asking follow-up questions about doctors 
+    or treatment, this should be considered medical.
+    
+    Respond with only "YES" or "NO".
+    """
+    
+    response = self.openai_client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a medical query classifier. Consider conversation context. Respond only with YES or NO."},
+            {"role": "user", "content": classification_prompt}
+        ],
+        max_tokens=10,
+        temperature=0.1
+    )
+    
+    return response.choices[0].message.content.strip().upper() == "YES"
+```
+
+<Callout type="info">
+**Context Intelligence**: The classifier considers conversation history to handle follow-up questions like "Can you recommend a doctor?" after discussing symptoms.
+</Callout>
+
+</Step>
+
+</Steps>
+
+### Symptom Assessment Engine
+
+<Steps>
+
+<Step>
+
+### AI-Powered Medical Assessment
+
+```python
+async def assess_symptoms(self, query: str, chat_history: List[Dict] = None) -> List[DiseaseAssessment]:
+    chat_history = chat_history or []
+    
+    # Extract medical context from previous conversations
+    context = ""
+    if chat_history:
+        recent_medical = [chat for chat in chat_history[-5:] 
+                         if "Medical Assessment" in chat.get('bot', '')]
+        if recent_medical:
+            context = f"Previous medical context: {recent_medical[-1]['user']} - {recent_medical[-1]['bot'][:300]}..."
+    
+    assessment_prompt = f"""
+    You are a medical AI assistant. Based on the following patient query 
+    and conversation context, provide a preliminary assessment of possible conditions.
+    
+    {context}
+    
+    Current Patient Query: "{query}"
+    
+    Please provide up to 5 possible conditions with probability percentages. 
+    Format your response as:
+    
+    Disease: [Disease Name] | Probability: [X%] | Description: [Brief description]
+    
+    Important: This is for preliminary assessment only and should not replace 
+    professional medical diagnosis. Be conservative with probabilities and 
+    always recommend consulting a healthcare professional.
+    
+    Example format:
+    Disease: Viral Fever | Probability: 65% | Description: Common viral infection with fever and body aches
+    Disease: Bacterial Infection | Probability: 25% | Description: Possible bacterial infection requiring antibiotic treatment
+    """
+    
+    response = self.openai_client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful medical AI assistant providing preliminary symptom assessment."},
+            {"role": "user", "content": assessment_prompt}
+        ],
+        max_tokens=500,
+        temperature=0.3
+    )
+    
+    return self._parse_assessment(response.choices[0].message.content)
+```
+
+</Step>
+
+<Step>
+
+### Parse Medical Assessments
+
+```python
+def _parse_assessment(self, assessment_text: str) -> List[DiseaseAssessment]:
+    assessments = []
+    pattern = r"Disease:\s*([^|]+)\s*\|\s*Probability:\s*(\d+)%\s*\|\s*Description:\s*([^|\n]+)"
+    matches = re.findall(pattern, assessment_text, re.IGNORECASE)
+    
+    for match in matches:
+        disease = match[0].strip()
+        probability = float(match[1])
+        description = match[2].strip()
+        assessments.append(DiseaseAssessment(disease, probability, description))
+    
+    if not assessments:
+        assessments.append(
+            DiseaseAssessment("General Health Concern", 50.0, 
+                            "Please consult a healthcare professional for proper diagnosis.")
+        )
+    
+    return assessments
+```
+
+**Structured Output Parsing**: Uses regex to extract disease names, probability percentages, and descriptions from GPT-4's formatted response.
+
+</Step>
+
+</Steps>
+
+### Doctor Vector Search
+
+<Steps>
+
+<Step>
+
+### Semantic Doctor Matching
+
+```python
+async def find_relevant_doctors(self, query: str, chat_history: List[Dict] = None, top_k: int = 5) -> tuple[List[DoctorRecommendation], float]:
+    start_time = time.time()
+    
+    # Enhance search query with conversation context
+    search_query = query
+    if chat_history:
+        recent_medical = [chat for chat in chat_history[-3:] 
+                         if "Medical Assessment" in chat.get('bot', '')]
+        if recent_medical:
+            original_symptoms = recent_medical[-1]['user']
+            search_query = f"{original_symptoms} {query}"
+    
+    # Generate embedding for enhanced query
+    query_embedding = list(self.embedding_model.embed([search_query]))[0]
+    query_vector = query_embedding.tolist() if hasattr(query_embedding, 'tolist') else list(query_embedding)
+    
+    # Perform vector search
+    vectors = self.antarys_client.vector_operations(self.collection_name)
+    results = await vectors.query(
+        vector=query_vector,
+        top_k=top_k,
+        include_metadata=True,
+        use_ann=True,
+        threshold=0.0
+    )
+    
+    search_time = time.time() - start_time
+    
+    # Convert results to structured recommendations
+    recommendations = []
+    for match in results.get('matches', []):
+        metadata = match.get('metadata', {})
+        score = match.get('score', 0.0)
+        
+        recommendation = DoctorRecommendation(
+            name=metadata.get('name', 'Unknown'),
+            specialisation=metadata.get('specialisation', 'General'),
+            hospital=metadata.get('hospital', 'Unknown Hospital'),
+            phone=metadata.get('phone', 'N/A'),
+            email=metadata.get('email', 'N/A'),
+            booking_url=metadata.get('booking_url', 'N/A'),
+            relevance_score=score,
+            degrees=metadata.get('degrees', [])
+        )
+        recommendations.append(recommendation)
+    
+    return recommendations, search_time
+```
+
+<Callout type="info">
+**Context Enhancement**: The search query is enriched with previous symptom discussions to improve doctor matching accuracy.
+</Callout>
+
+</Step>
+
+</Steps>
+
+### Conversation Management
+
+<Steps>
+
+<Step>
+
+### General Chat Capability
+
+```python
+async def general_chat(self, user_query: str, chat_history: List[Dict]) -> str:
+    # Build conversation context
+    messages = [
+        {"role": "system", "content": "You are a helpful AI assistant. You can discuss any topic and provide general assistance. If users ask about medical symptoms or health concerns, you can also help assess symptoms and recommend verified doctors from your platform."}
+    ]
+    
+    # Add conversation history
+    for chat in chat_history:
+        messages.append({"role": "user", "content": chat["user"]})
+        messages.append({"role": "assistant", "content": chat["bot"]})
+    
+    messages.append({"role": "user", "content": user_query})
+    
+    response = self.openai_client.chat.completions.create(
+        model="gpt-4",
+        messages=messages,
+        max_tokens=300,
+        temperature=0.7
+    )
+    
+    return response.choices[0].message.content
+```
+
+**Dual-Mode Operation**: The chatbot handles both medical queries and general conversation seamlessly, maintaining context across interaction types.
+
+</Step>
+
+<Step>
+
+### Main Query Processing Pipeline
+
+```python
+async def process_query(self, user_query: str, chat_history: List[Dict] = None) -> tuple:
+    chat_history = chat_history or []
+    
+    # Determine if this is a medical query
+    is_medical = await self.is_medical_query(user_query, chat_history)
+    
+    if is_medical:
+        try:
+            # Process medical query
+            assessments = await self.assess_symptoms(user_query, chat_history)
+            doctors, search_time = await self.find_relevant_doctors(user_query, chat_history)
+            return assessments, doctors, search_time, None, True
+        except Exception as e:
+            error_msg = f"Error processing medical query: {e}"
+            return None, None, 0.0, error_msg, True
+    else:
+        try:
+            # Handle general conversation
+            general_response = await self.general_chat(user_query, chat_history)
+            return None, None, 0.0, general_response, False
+        except Exception as e:
+            error_msg = f"Error in general chat: {e}"
+            return None, None, 0.0, error_msg, False
+```
+
+**Unified Pipeline**: Single entry point that routes queries to appropriate processing paths while maintaining consistent error handling.
+
+</Step>
+
+</Steps>
+
+### Response Formatting
+
+<Steps>
+
+<Step>
+
+### Structured Medical Response
+
+```python
+def format_response(assessments, doctors, search_time, general_response, is_medical):
+    if not is_medical:
+        return general_response
+    
+    response = ""
+    
+    # Format medical assessment
+    if assessments:
+        response += "**Medical Assessment:**\n\n"
+        for assessment in assessments:
+            response += f"• **{assessment.disease}** - {assessment.probability:.0f}% likely\n"
+            response += f"  {assessment.description}\n\n"
+    
+    # Format doctor recommendations
+    if doctors:
+        response += "**Verified Doctors on Our Platform:**\n\n"
+        for i, doctor in enumerate(doctors, 1):
+            relevance_percent = doctor.relevance_score * 100
+            degrees_str = ", ".join(doctor.degrees)
+            
+            response += f"**{i}. {doctor.name}** - {doctor.specialisation}\n"
+            response += f"Relevance: {relevance_percent:.1f}% | {doctor.hospital}\n"
+            response += f"Degrees: {degrees_str}\n"
+            response += f"Phone: {doctor.phone} | Email: {doctor.email}\n"
+            response += f"[Book Appointment]({doctor.booking_url})\n\n"
+    
+    if search_time > 0:
+        response += f"*Doctor search completed in {search_time:.3f} seconds*"
+    
+    return response
+```
+
+**Rich Formatting**: Creates structured responses with medical assessments, doctor details, and actionable booking links.
+
+</Step>
+
+</Steps>
+
+### Streamlit Interface
+
+<Steps>
+
+<Step>
+
+### Interactive Chat Interface
+
+```python
+def on_input_change():
+    user_input = st.session_state.user_input
+    if user_input.strip():
+        st.session_state.past.append(user_input)
+        
+        # Build chat history from session state
+        chat_history = []
+        for i in range(len(st.session_state.past) - 1):
+            chat_history.append({
+                "user": st.session_state.past[i],
+                "bot": st.session_state.generated[i] if i < len(st.session_state.generated) else ""
+            })
+        
+        # Process query with context
+        with st.spinner("Processing..."):
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                assessments, doctors, search_time, general_response, is_medical = loop.run_until_complete(
+                    st.session_state.chatbot.process_query(user_input, chat_history)
+                )
+                
+                response = format_response(assessments, doctors, search_time, general_response, is_medical)
+                st.session_state.generated.append(response)
+                
+            except Exception as e:
+                st.session_state.generated.append(f"Error: {e}")
+        
+        st.session_state.user_input = ""
+```
+
+</Step>
+
+<Step>
+
+### Main Streamlit App
+
+```python
+# Initialize Streamlit app
+st.set_page_config(page_title="Medical Chatbot", page_icon="🏥")
+st.title("Medical Chatbot")
+
+# Initialize session state
+if 'past' not in st.session_state:
+    st.session_state.past = []
+if 'generated' not in st.session_state:
+    st.session_state.generated = []
+
+# Initialize chatbot
+if not st.session_state.get('initialized', False):
+    with st.spinner("Initializing chatbot..."):
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            success = loop.run_until_complete(initialize_chatbot())
+            if success:
+                st.success("Chatbot ready!")
+                st.session_state.initialized = True
+            else:
+                st.error("Failed to initialize chatbot.")
+                st.stop()
+        except Exception as e:
+            st.error(f"Error: {e}")
+            st.stop()
+
+# Display chat interface
+st.warning("AI Assistant with verified doctor recommendations for health concerns.")
+
+# Render chat history
+chat_placeholder = st.empty()
+with chat_placeholder.container():
+    if st.session_state['generated']:
+        for i in range(len(st.session_state['generated'])):
+            message(st.session_state['past'][i], is_user=True, key=f"{i}_user")
+            message(st.session_state['generated'][i], key=f"{i}")
+
+# Input interface
+with st.container():
+    st.text_input("Enter your symptoms:", on_change=on_input_change,
+                  key="user_input", placeholder="Describe your symptoms or health concerns...")
+    st.button("Clear Chat", on_click=on_clear_click)
+```
+
+<Callout type="warn">
+**Session Management**: Streamlit's session state preserves conversation history across reruns, maintaining context for follow-up questions.
+</Callout>
+
+</Step>
+
+</Steps>
+
+## Doctor Database Setup
+
+### Vector Database Population
+
+```python
+# doctors.py - Sample doctor data structure
+@dataclass
+class Doctor:
+    name: str
+    age: int
+    sex: str
+    specialisation: str
+    degrees: List[str]
+    hospital: str
+    email: str
+    phone: str
+    booking_url: str
+
+# db.py - Database vectorization
+class DoctorVectorizer:
+    def create_doctor_text(self, doctor: Doctor) -> str:
+        degrees_str = ", ".join(doctor.degrees)
+        
+        return f"""
+        Dr. {doctor.name} is a {doctor.specialisation} specialist.
+        Specialization: {doctor.specialisation}
+        Medical Degrees: {degrees_str}
+        Hospital: {doctor.hospital}
+        Gender: {doctor.sex}
+        Age: {doctor.age} years old
+        
+        Medical expertise includes treatment of conditions related to {doctor.specialisation.lower()}.
+        Available for consultation and treatment in {doctor.hospital}.
+        """.strip()
+    
+    def vectorize_doctors(self, doctors: List[Doctor]) -> List[Dict[str, Any]]:
+        doctor_texts = [self.create_doctor_text(doctor) for doctor in doctors]
+        embeddings = list(self.embedding_model.embed(doctor_texts))
+        
+        vector_records = []
+        for i, (doctor, embedding) in enumerate(zip(doctors, embeddings)):
+            record = {
+                "id": f"doctor_{i}",
+                "vector": embedding.tolist(),
+                "metadata": {
+                    "name": doctor.name,
+                    "specialisation": doctor.specialisation,
+                    "degrees": doctor.degrees,
+                    "hospital": doctor.hospital,
+                    "phone": doctor.phone,
+                    "email": doctor.email,
+                    "booking_url": doctor.booking_url,
+                    "searchable_text": self.create_doctor_text(doctor)
+                }
+            }
+            vector_records.append(record)
+        
+        return vector_records
+```
+
+**Rich Doctor Profiles**: Creates comprehensive text representations combining specialization, credentials, and hospital affiliation for optimal semantic matching.
+
+## Key Features
+
+### Advanced Capabilities
+
+<Cards>
+
+<Card title="🧠 Context Awareness">
+**Conversation Memory**
+
+- Tracks medical discussion context across multiple exchanges
+- Enhances doctor search with symptom history
+- Maintains conversation flow for follow-up questions
+</Card>
+
+<Card title="🎯 Smart Classification">
+**Intelligent Query Routing**
+
+- Distinguishes medical queries from general conversation
+- Uses GPT-4 for nuanced query understanding
+- Handles mixed conversation types seamlessly
+</Card>
+
+<Card title="⚡ Fast Vector Search">
+**Optimized Doctor Matching**
+
+- FastEmbed for lightweight, fast embeddings
+- Antarys HNSW for sub-second search results
+- Relevance scoring for recommendation ranking
+</Card>
+
+<Card title="🏥 Medical Assessment">
+**Symptom Analysis**
+
+- Structured disease probability scoring
+- Conservative assessment approach
+- Professional disclaimer integration
+</Card>
+
+</Cards>
+
+### Performance Optimizations
+
+**Embedding Efficiency**: Uses FastEmbed's `BAAI/bge-small-en-v1.5` model for fast, accurate embeddings without GPU requirements.
+
+**Async Architecture**: Full async/await implementation for non-blocking operations and scalable concurrent user handling.
+
+**Context Management**: Intelligent conversation context extraction that enhances search quality while maintaining response speed.
+
+## Usage Examples
+
+### Medical Query Flow
+
+```python
+# User: "I have a fever and headache for 2 days"
+# System: 
+# 1. Classifies as medical query
+# 2. Assesses symptoms with GPT-4
+# 3. Searches for relevant doctors
+# 4. Returns formatted response with:
+#    - Medical Assessment (Viral Fever 65%, Bacterial Infection 25%)
+#    - Recommended doctors with specializations
+#    - Contact information and booking links
+
+# User: "Can you recommend a doctor?"
+# System:
+# 1. Uses previous symptom context
+# 2. Enhanced search query: "fever headache Can you recommend a doctor?"
+# 3. Returns contextually relevant specialists
+```
+
+### General Conversation
+
+```python
+# User: "How's the weather?"
+# System: 
+# 1. Classifies as general query
+# 2. Routes to general chat handler
+# 3. Maintains conversational capability
+# 4. Ready to switch to medical mode when needed
+```
+
+## Complete Integration
+
+```python
+# main.py - Full application
+async def main():
+    # Initialize chatbot
+    chatbot = MedicalChatbot()
+    await chatbot.initialize()
+    
+    # Sample interaction
+    query = "I have chest pain and shortness of breath"
+    assessments, doctors, search_time, _, is_medical = await chatbot.process_query(query)
+    
+    if is_medical:
+        print("Medical Assessment:")
+        for assessment in assessments:
+            print(f"- {assessment.disease}: {assessment.probability}%")
+        
+        print("\nRecommended Doctors:")
+        for doctor in doctors:
+            print(f"- Dr. {doctor.name} ({doctor.specialisation}) - {doctor.hospital}")
+    
+    await chatbot.close()
+
+# Run the application
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+<Callout type="warn">
+**Medical Disclaimer**: This chatbot provides preliminary assessments for informational purposes only. Always consult qualified healthcare professionals for actual medical diagnosis and treatment.
+</Callout>
