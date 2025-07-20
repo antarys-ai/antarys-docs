@@ -2,6 +2,7 @@
   "title": "Cook book",
   "pages": [
     "index",
-    "medibot"
+    "medibot",
+    "geobench"
   ]
 }
