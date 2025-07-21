@@ -41,7 +41,7 @@ export const baseOptions: BaseLayoutProps = {
     },
     {
       text: "Discord",
-      url: "https://discord.gg/qt7sbK6M",
+      url: "https://discord.gg/cvcBA3CgwX",
       icon: <MessageCircle className="w-4 h-4" />,
       external: true,
     },

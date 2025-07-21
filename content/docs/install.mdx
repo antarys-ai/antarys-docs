@@ -1,0 +1,367 @@
+---
+title: Quick Installation
+description: Install Antarys vector database on macOS and Linux with one-liner command or manual download.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+# Installing Antarys
+
+Get started with Antarys vector database on supported platforms using our automated installer or manual downloads.
+
+<Callout type="warn">
+**Preview Release:** Antarys is currently in preview. Features and APIs may change between releases.
+</Callout>
+
+## Platform Support
+
+Antarys currently supports the following platforms:
+
+<Cards>
+
+<Card title="Apple ARM" href="#apple-arm-installation">
+macOS with Apple Silicon (M1/M2/M3 chips)
+</Card>
+
+<Card title="Linux x64" href="#linux-x64-installation">
+Linux distributions with x86_64 architecture
+</Card>
+
+</Cards>
+
+## Quick Install
+
+The fastest way to install Antarys on supported platforms:
+
+```bash
+curl -fsSL http://antarys.ai/start.sh | bash
+```
+
+<Callout type="info">
+**Auto-detection:** The installer automatically detects your platform and installs the appropriate version.
+</Callout>
+
+## Manual Installation
+
+If you prefer manual installation or need more control over the process:
+
+<Tabs items={['Apple ARM (macOS)', 'Linux x64']}>
+
+<Tab value="Apple ARM (macOS)">
+
+<Steps>
+
+<Step>
+
+### Download the Package
+
+Download the macOS installer package:
+
+```bash
+curl -L -o antarys-apple-arm.pkg \
+  https://github.com/antarys-ai/antarys-releases/releases/download/preview/antarys-apple-arm.pkg
+```
+
+</Step>
+
+<Step>
+
+### Install the Package
+
+Install using the macOS installer:
+
+```bash
+sudo installer -pkg antarys-apple-arm.pkg -target /
+```
+
+<Callout type="info">
+**Admin Rights:** This command requires administrator privileges to install system-wide.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Verify Installation
+
+Check that Antarys is installed correctly:
+
+```bash
+which antarys
+```
+
+</Step>
+
+</Steps>
+
+</Tab>
+
+<Tab value="Linux x64">
+
+<Steps>
+
+<Step>
+
+### Download the Archive
+
+Download the Linux binary archive:
+
+```bash
+curl -L -o antarys-linux-x64.zip \
+  https://github.com/antarys-ai/antarys-releases/releases/download/preview/antarys-linux-x64.zip
+```
+
+</Step>
+
+<Step>
+
+### Extract and Install
+
+Extract and install the binary:
+
+```bash
+# Extract the archive
+unzip antarys-linux-x64.zip
+
+# Install to system directory
+sudo cp antarys /usr/bin/antarys
+sudo chmod +x /usr/bin/antarys
+```
+
+</Step>
+
+<Step>
+
+### Verify Installation
+
+Check that Antarys is installed correctly:
+
+```bash
+which antarys
+```
+
+</Step>
+
+</Steps>
+
+</Tab>
+
+</Tabs>
+
+## Getting Started
+
+Once installed, start Antarys with default settings:
+
+```bash
+antarys --port=8080
+```
+
+<Callout>
+**Default Configuration:** Antarys starts with optimized defaults for development and testing.
+</Callout>
+
+### Advanced Configuration
+
+For production deployments, customize Antarys with additional parameters:
+
+```bash
+antarys \
+  --port=8080 \
+  --data-dir=./data \
+  --enable-gpu=false \
+  --shards=16 \
+  --query-threads=8 \
+  --commit-interval=60 \
+  --cache-size=10000 \
+  --enable-hnsw=true \
+  --optimization=3
+```
+
+**Key Configuration Options:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--port` | API server port | 8080 |
+| `--data-dir` | Path to data directory | ./data |
+| `--enable-gpu` | Enable GPU acceleration | false |
+| `--shards` | Number of data shards | 16 |
+| `--query-threads` | Number of query threads | CPU_COUNT×2 |
+| `--commit-interval` | Auto-commit interval (seconds) | 60 |
+| `--cache-size` | Size of result cache | 10000 |
+| `--enable-hnsw` | Enable HNSW indexing | true |
+| `--optimization` | Optimization level (0-3) | 3 |
+
+## Releases and Updates
+
+<Cards>
+
+<Card title="Preview Releases" href="https://github.com/antarys-ai/antarys-releases/releases/tag/preview">
+Access the latest preview builds with new features
+</Card>
+
+<Card title="Release Notes" href="https://github.com/antarys-ai/antarys-releases/releases">
+View changelog and version history
+</Card>
+
+</Cards>
+
+### Staying Updated
+
+To update to the latest version, simply run the installer again:
+
+```bash
+curl -fsSL http://antarys.ai/start.sh | bash
+```
+
+The installer will replace your existing installation with the latest preview release.
+
+## Platform Requirements
+
+### Apple ARM (macOS)
+
+<Callout type="info">
+**Compatibility:** Requires Apple Silicon Mac (M1, M2, or M3 chips). Intel Macs are not currently supported.
+</Callout>
+
+**System Requirements:**
+- macOS 11.0 (Big Sur) or later
+- Apple Silicon processor (M1/M2/M3)
+- 100MB available disk space
+- Administrator privileges for installation
+
+### Linux x64
+
+**Supported Distributions:**
+- Ubuntu 18.04+ / Debian 9+
+- CentOS 7+ / RHEL 7+
+- Fedora 30+
+- Most modern Linux distributions with glibc 2.17+
+
+**System Requirements:**
+- x86_64 architecture
+- 100MB available disk space
+- `curl` and `unzip` utilities
+- Administrator privileges for system installation
+
+**Prerequisites Check:**
+
+```bash
+# Check architecture
+uname -m  # Should show x86_64
+
+# Install prerequisites if missing
+sudo apt-get update && sudo apt-get install curl unzip  # Ubuntu/Debian
+sudo yum install curl unzip  # CentOS/RHEL
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<Steps>
+
+<Step>
+
+### Permission Denied
+
+If you encounter permission errors:
+
+```bash
+# Make sure the binary is executable
+sudo chmod +x /usr/bin/antarys
+
+# Or install to user directory
+mkdir -p ~/.local/bin
+cp antarys ~/.local/bin/
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+</Step>
+
+<Step>
+
+### Command Not Found
+
+If `antarys` is not found after installation:
+
+```bash
+# Check if it's in PATH
+which antarys
+
+# Add to PATH if needed (add to ~/.bashrc or ~/.zshrc)
+export PATH="/usr/bin:$PATH"
+
+# Reload shell configuration
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+</Step>
+
+<Step>
+
+### Platform Not Supported
+
+Currently supported platforms:
+- Apple ARM (M1/M2/M3 Macs)
+- Linux x64 (x86_64 architecture)
+- Intel Macs (coming soon)
+- Windows (coming soon)
+- Linux ARM (coming soon)
+
+</Step>
+
+</Steps>
+
+### Getting Help
+
+If you encounter issues during installation:
+
+<Cards>
+
+<Card title="Report Issues" href="https://github.com/antarys-ai/antarys-releases/issues">
+Create an issue on GitHub with installation details
+</Card>
+
+<Card title="Documentation" href="/docs/python">
+Check the full documentation for more help
+</Card>
+
+</Cards>
+
+When reporting issues, please include:
+
+```bash
+# System information
+uname -a
+# Platform details
+cat /etc/os-release  # Linux only
+sw_vers  # macOS only
+# Installation log output
+```
+
+## Next Steps
+
+After installation, you're ready to start building with Antarys:
+
+<Cards>
+
+<Card title="Quick Start" href="/docs">
+Follow the getting started guide
+</Card>
+
+<Card title="Python Client" href="/docs/python">
+Install and use the Python SDK
+</Card>
+
+<Card title="Node.js Client" href="/docs/nodejs">
+Install and use the Node.js Typescript SDK
+</Card>
+
+<Card title="Examples" href="/docs/cookbook">
+Explore practical examples and tutorials
+</Card>
+
+</Cards>
