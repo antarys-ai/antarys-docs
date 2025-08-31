@@ -31,19 +31,19 @@ export default function Stats() {
         <div className="grid grid-cols-2 gap-12 sm:grid-cols-4">
           <StatItem
             header="upto"
-            count="2-8x"
-            description="faster vector read/write"
+            count="1.5-2x"
+            description="Faster on Text Embeddings"
           />
           <StatItem
             header="over"
-            count="88%"
-            description="vector similarity accuracy"
+            count="99%"
+            description="Recall Accuracy"
           />
           <StatItem header="below" count="25%" description="CPU consumption" />
           <StatItem
             header="upto"
-            count="10x"
-            description="faster image searching"
+            count="8-10x"
+            description="Faster image searching"
           />
         </div>
       </div>
