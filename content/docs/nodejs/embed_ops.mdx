@@ -1,0 +1,392 @@
+---
+title: Embedding Operations
+description: Generate text embeddings using Antarys's built-in embedding models for semantic search and similarity matching.
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+# Embedding Operations
+
+Generate vector embeddings from text using Antarys's built-in embedding models.
+
+<Callout type="info">
+**Requirement:** The Antarys server must be started with `--enable-embedding` flag and have an embedding model downloaded.
+</Callout>
+
+## Quick Start
+
+```typescript
+import { createClient, embed } from 'antarys';
+
+// Initialize client
+const client = createClient('http://localhost:8080');
+
+// Generate embeddings
+const embeddings = await embed(client, [
+  'First document',
+  'Second document',
+  'Third document'
+]);
+
+// Each embedding is an array of numbers
+console.log(`Generated ${embeddings.length} embeddings`);
+console.log(`Dimensions: ${embeddings[0].length}`);
+```
+
+## Basic Operations
+
+### Single Text Embedding
+
+```typescript
+// Embed a single text
+const embedding = await embed(client, 'Hello, World!');
+
+// Returns a single vector (array of numbers)
+console.log(`Embedding dimensions: ${embedding.length}`);
+```
+
+### Multiple Text Embeddings
+
+```typescript
+// Embed multiple texts in one call
+const texts = [
+  'Python is a programming language',
+  'JavaScript is used for web development',
+  'Machine learning is a subset of AI'
+];
+
+const embeddings = await embed(client, texts, 256);
+
+// Returns array of vectors
+for (let i = 0; i < embeddings.length; i++) {
+  console.log(`Text ${i + 1}: ${embeddings[i].length} dimensions`);
+}
+```
+
+## Search-Optimized Embeddings
+
+### Query Embeddings
+
+Use this when generating embeddings for search queries:
+
+```typescript
+import { embedQuery } from 'antarys';
+
+// Automatically adds "query: " prefix for better retrieval
+const queryEmbedding = await embedQuery(
+  client,
+  'What is machine learning?'
+);
+```
+
+### Document Embeddings
+
+Use this when generating embeddings for documents to be searched:
+
+```typescript
+import { embedDocuments } from 'antarys';
+
+// Automatically adds "passage: " prefix for better retrieval
+const documents = [
+  'Python is a versatile programming language',
+  'JavaScript powers modern web applications',
+  'Go is efficient for concurrent programming'
+];
+
+const docEmbeddings = await embedDocuments(client, documents, {
+  batchSize: 100,
+  showProgress: true
+});
+```
+
+## Text Similarity
+
+Calculate similarity between two texts:
+
+```typescript
+import { textSimilarity } from 'antarys';
+
+// Returns cosine similarity score (0 to 1)
+const score = await textSimilarity(
+  client,
+  'machine learning',
+  'artificial intelligence'
+);
+
+console.log(`Similarity: ${score.toFixed(4)}`);
+```
+
+## Advanced Usage
+
+### Using the Operations Interface
+
+For more control, use the `EmbeddingOperations` interface directly:
+
+<Tabs items={['Basic Usage', 'With Metadata', 'Batch Processing']}>
+
+<Tab value="Basic Usage">
+
+```typescript
+// Get embedding operations interface
+const embedOps = client.embeddingOperations();
+
+// Generate embeddings
+const embeddings = await embedOps.embed(
+  ['Text 1', 'Text 2'],
+  256
+);
+```
+
+</Tab>
+
+<Tab value="With Metadata">
+
+```typescript
+// Get embeddings with model metadata
+const results = await embedOps.embedWithMetadata([
+  'First document',
+  'Second document'
+]);
+
+for (const result of results) {
+  console.log(`Text: ${result.text}`);
+  console.log(`Model: ${result.model}`);
+  console.log(`Dimensions: ${result.dimensions}`);
+  console.log(`Embedding: ${result.embedding.slice(0, 5)}...`);
+}
+```
+
+</Tab>
+
+<Tab value="Batch Processing">
+
+```typescript
+// Process large batches with progress tracking
+const largeDataset = Array.from(
+  { length: 1000 }, 
+  (_, i) => `Document ${i}`
+);
+
+const embeddings = await embedOps.embedBatch(largeDataset, {
+  batchSize: 100,
+  showProgress: true
+});
+
+console.log(`Processed ${embeddings.length} embeddings`);
+```
+
+</Tab>
+
+</Tabs>
+
+## Complete Example
+
+Semantic search workflow combining embeddings and vector operations:
+
+```typescript
+import { createClient, embedQuery, embedDocuments } from 'antarys';
+
+async function semanticSearchExample() {
+  // Initialize client
+  const client = createClient('http://localhost:8080');
+  
+  try {
+    await client.createCollection({
+      name: 'documents',
+      dimensions: 768,
+      enableHnsw: true
+    });
+    
+    // Prepare documents
+    const documents = [
+      'Python is great for data science',
+      'JavaScript powers web applications',
+      'Machine learning transforms industries',
+      'Neural networks process complex patterns'
+    ];
+    
+    // Generate document embeddings
+    const docEmbeddings = await embedDocuments(client, documents);
+    
+    // Insert into collection
+    const vectorOps = client.vectorOperations('documents');
+    const records = documents.map((doc, i) => ({
+      id: `doc_${i}`,
+      values: docEmbeddings[i],
+      metadata: { text: doc }
+    }));
+    
+    await vectorOps.upsert(records);
+    
+    // Search with a query
+    const query = 'What is used for AI?';
+    const queryEmbedding = await embedQuery(client, query);
+    
+    const results = await vectorOps.query({
+      vector: queryEmbedding,
+      topK: 3,
+      includeMetadata: true
+    });
+    
+    // Display results
+    console.log(`Query: ${query}\n`);
+    results.matches.forEach((match, i) => {
+      console.log(`${i + 1}. ${match.metadata.text}`);
+      console.log(`   Score: ${match.score.toFixed(4)}\n`);
+    });
+    
+  } finally {
+    await client.close();
+  }
+}
+
+semanticSearchExample();
+```
+
+## Supported Models
+
+Available embedding models (configured on server startup):
+
+| Model | Dimensions | Description |
+|-------|------------|-------------|
+| BGE-Base-EN | 768 | Base English model |
+| BGE-Base-EN-v1.5 | 768 | Improved base model |
+| BGE-Small-EN | 384 | Fast English model |
+| BGE-Small-EN-v1.5 | 384 | Default, fast and accurate |
+| BGE-Small-ZH-v1.5 | 512 | Chinese language model |
+
+<Callout type="info">
+The model is configured when starting the Antarys server with `--embedding-model <id>`.
+</Callout>
+
+## Performance Tips
+
+**Batch Processing**
+- Use batch sizes of 100-256 for optimal throughput
+- Enable `showProgress: true` for long-running operations
+
+```typescript
+const embeddings = await embedOps.embedBatch(texts, {
+  batchSize: 200,
+  showProgress: true
+});
+```
+
+**Query vs Document Prefixes**
+- Use `embedQuery()` for search queries
+- Use `embedDocuments()` for documents being indexed
+- Prefixes improve retrieval accuracy by 5-10%
+
+```typescript
+// For queries
+const queryEmb = await embedQuery(client, 'search query');
+
+// For documents
+const docEmbs = await embedDocuments(client, documents);
+```
+
+**Memory Management**
+- Process large datasets in chunks
+- Use streaming for very large corpora (100k+ documents)
+
+```typescript
+// Process in chunks
+const chunkSize = 10000;
+for (let i = 0; i < allTexts.length; i += chunkSize) {
+  const chunk = allTexts.slice(i, i + chunkSize);
+  const embeddings = await embedDocuments(client, chunk);
+  // Process embeddings...
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const embeddings = await embed(client, texts);
+} catch (error) {
+  if (error.message.includes('not enabled')) {
+    console.error('Embedding is not enabled on the server');
+  } else {
+    console.error('Error:', error.message);
+  }
+}
+```
+
+<Callout type="warn">
+If you get a "not enabled" error, ensure the server is started with `--enable-embedding` and has a model downloaded.
+</Callout>
+
+## TypeScript Types
+
+```typescript
+import { 
+  EmbeddingOperations,
+  EmbeddingResponse,
+  EmbeddingWithMetadata
+} from 'antarys';
+
+// Embedding response structure
+interface EmbeddingResponse {
+  embeddings: number[][];
+  model: string;
+  dimensions: number;
+  count: number;
+}
+
+// Embedding with metadata
+interface EmbeddingWithMetadata {
+  text: string;
+  embedding: number[];
+  model: string;
+  dimensions: number;
+}
+```
+
+## API Reference
+
+### embed(client, texts, batchSize?)
+
+Generate embeddings for text(s).
+
+**Parameters:**
+- `client` - Antarys client instance
+- `texts` - String or array of strings
+- `batchSize` - Optional batch size (default: 256)
+
+**Returns:** Single embedding or array of embeddings
+
+### embedQuery(client, query)
+
+Generate query embedding with "query: " prefix.
+
+**Parameters:**
+- `client` - Antarys client instance
+- `query` - Query text string
+
+**Returns:** Embedding vector
+
+### embedDocuments(client, documents, options?)
+
+Generate document embeddings with "passage: " prefix.
+
+**Parameters:**
+- `client` - Antarys client instance
+- `documents` - Array of document texts
+- `options` - Optional configuration
+  - `batchSize` - Batch size (default: 256)
+  - `showProgress` - Show progress (default: false)
+
+**Returns:** Array of embedding vectors
+
+### textSimilarity(client, text1, text2)
+
+Calculate cosine similarity between two texts.
+
+**Parameters:**
+- `client` - Antarys client instance
+- `text1` - First text
+- `text2` - Second text
+
+**Returns:** Similarity score (0 to 1)

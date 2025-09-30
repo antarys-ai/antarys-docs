@@ -4,6 +4,7 @@
     "index",
     "install", 
     "vector_ops",
+    "embed_ops",
     "samples",
     "performance"
   ]

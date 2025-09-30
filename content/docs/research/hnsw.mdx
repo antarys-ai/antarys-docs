@@ -1,0 +1,621 @@
+---
+title: Understanding HNSW - The Algorithm Behind Fast Vector Search
+description: Deep dive into Hierarchical Navigable Small World graphs, the algorithm powering modern vector databases and semantic search applications.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+# Understanding HNSW: The Algorithm Behind Lightning-Fast Vector Search
+
+Explore the mathematical foundations and real-world applications of Hierarchical Navigable Small World graphs, the backbone of modern vector databases and AI-powered search systems.
+
+## Overview
+
+Vector search has become the cornerstone of modern AI applications, from recommendation systems to semantic search and RAG (Retrieval-Augmented Generation) pipelines. At the heart of these systems lies a sophisticated algorithm called HNSW (Hierarchical Navigable Small World), which enables lightning-fast similarity searches across millions of high-dimensional vectors.
+
+<Cards>
+
+<Card title="Vector Search Fundamentals" href="#what-is-vector-search">
+Understanding how machines find similarities in any data type
+</Card>
+
+<Card title="HNSW Algorithm" href="#hierarchical-navigable-small-world">
+The graph-based approach to approximate nearest neighbor search
+</Card>
+
+<Card title="Distance Metrics" href="#distance-metrics-and-similarity">
+Cosine similarity, Euclidean distance, and topological approaches
+</Card>
+
+<Card title="Performance Optimisations" href="#antarys-hnsw-optimisation">
+How implementation tricks can achieve 8x performance improvements
+</Card>
+
+</Cards>
+
+## What is Vector Search?
+
+### The Foundation of Modern AI
+
+Vector search is a method for finding similar items by representing data as high-dimensional numerical vectors and computing distances between them. Unlike traditional keyword-based search, vector search understands semantic meaning and context.
+
+<Steps>
+
+<Step>
+
+### Data Vectorisation
+
+Any type of data can be converted into vectors:
+- **Text**: "The cat sat on the mat" → [0.2, -0.1, 0.8, ..., 0.3]
+- **Images**: Pixel patterns → [0.5, 0.2, -0.3, ..., 0.7]
+- **Audio**: Spectral features → [-0.1, 0.4, 0.9, ..., -0.2]
+- **User Preferences**: Behavioral patterns → [0.6, -0.4, 0.1, ..., 0.8]
+
+```python
+import openai
+
+def text_to_vector(text):
+    response = openai.embeddings.create(
+        model="text-embedding-3-small",
+        input=text
+    )
+    return response.data[0].embedding
+```
+
+There are open source embedding models, you can use models from huggingface for example the BAAI/bge-small-en-v1.5 embedding model which will get most of your work done!
+
+</Step>
+
+<Step>
+
+### Similarity Through Geometry
+
+Once data is vectorized, similarity becomes a geometric problem. Items with similar meanings or characteristics cluster together in vector space, while dissimilar items remain distant.
+
+**Real-world Example:**
+- "Dog" and "Puppy" vectors: Distance = 0.1 (very similar)
+- "Dog" and "Airplane" vectors: Distance = 0.9 (very different)
+
+So further the distance, less likely they hold similar meaning!
+
+</Step>
+
+<Step>
+
+### The Scale Challenge
+
+Modern applications deal with massive vector datasets:
+- **OpenAI embeddings**: 1,536 dimensions
+- **Google's Universal Sentence Encoder**: 512 dimensions
+- **CLIP image embeddings**: 512-2048 dimensions
+- **Enterprise knowledge bases**: Millions of vectors
+
+Searching through millions of high-dimensional vectors naively requires comparing every vector pair—computationally prohibitive for real-time applications.
+
+</Step>
+
+</Steps>
+
+## Approximate Nearest Neighbor (ANN) Search
+
+### The Need for Speed
+
+<Callout type="info">
+**The Curse of Dimensionality**: As dimensions increase, the computational cost of exact nearest neighbor search grows exponentially, making brute-force approaches impractical for real-world applications.
+</Callout>
+
+Approximate Nearest Neighbor (ANN) algorithms trade perfect accuracy for dramatic speed improvements. Instead of finding the exact nearest neighbors, ANN algorithms find neighbors that are "close enough" with high probability.
+
+### ANN vs Exact Search Performance
+
+| Method | Time Complexity | Space Complexity | Accuracy | Use Case |
+|--------|----------------|------------------|----------|----------|
+| **Brute Force** | O(N×D) | O(N×D) | 100% | Small datasets |
+| **k-d trees** | O(log N) to O(N) | O(N×D) | 100% | Low dimensions |
+| **LSH** | O(1) average | O(N×D) | ~90% | High dimensions |
+| **HNSW** | O(log N) | O(N×D) | ~95-99% | High dimensions |
+
+**Key Benefits of ANN:**
+- **Speed**: 10-1000x faster than exact search
+- **Scalability**: Handles millions of vectors efficiently
+- **Quality**: 95-99% accuracy is sufficient for most applications
+- **Real-time**: Sub-millisecond query response times
+
+## Hierarchical Navigable Small World (HNSW)
+
+### The Graph-Based Revolution
+
+HNSW, introduced by Malkov and Yashunin in 2016, revolutionized vector search by combining two powerful concepts:
+1. **Small World Networks**: Most nodes can reach any other node through a small number of hops
+2. **Hierarchical Structure**: Multiple layers with decreasing connectivity for efficient navigation
+
+### Core Algorithm Concepts
+
+<Steps>
+
+<Step>
+
+### Small World Properties
+
+Small world networks, popularized by the "six degrees of separation" concept, have two key properties:
+- **High clustering**: Nodes form tight local clusters
+- **Short path lengths**: Any two nodes can be connected through few intermediary nodes
+
+</Step>
+
+<Step>
+
+### Hierarchical Layer Structure
+
+HNSW constructs multiple layers of the graph:
+- **Layer 0**: Contains all vectors with dense local connections
+- **Layer 1+**: Contain subsets of vectors with long-range connections
+- **Top Layer**: Contains very few highly connected "landmark" vectors
+
+**Navigation Strategy:**
+1. Start from the top layer with global landmarks
+2. Greedily navigate toward the query
+3. Drop to lower layers for refined local search
+4. Repeat until reaching the bottom layer
+
+</Step>
+
+<Step>
+
+### Construction Algorithm
+
+```python
+def hnsw_construction_overview():
+    """
+    HNSW graph construction process
+    """
+    for vector in dataset:
+        # Determine which layers this vector belongs to
+        level = select_level_with_probability()
+        
+        # For each layer from top to vector's level
+        for layer in range(top_layer, level, -1):
+            # Find entry points for this layer
+            entry_points = find_closest_in_layer(vector, layer)
+            
+            # Connect to M nearest neighbors
+            connect_to_neighbors(vector, entry_points, M=16)
+            
+            # Prune connections if necessary
+            prune_connections_if_needed(vector, layer)
+```
+
+</Step>
+
+</Steps>
+
+### How HNSW Works with High-Dimensional Data
+
+High-dimensional vector spaces present unique challenges that HNSW elegantly addresses:
+
+**Challenge 1: Curse of Dimensionality**
+- In high dimensions, all points appear equidistant
+- HNSW's hierarchical structure maintains meaningful distance relationships
+
+**Challenge 2: Hub Formation**
+- Some vectors become over-connected "hubs"
+- HNSW's bidirectional link pruning prevents hub dominance
+
+**Challenge 3: Local Minima**
+- Greedy search can get trapped in suboptimal regions
+- Multiple entry points and layer traversal provide escape mechanisms
+
+<Callout type="info">
+**Performance Insight**: HNSW's logarithmic search complexity O(log N) makes it practical for datasets with millions of vectors, while maintaining high recall rates (95-99%).
+</Callout>
+
+## Distance Metrics and Similarity
+
+### Cosine Similarity
+
+Cosine similarity measures the angle between vectors, making it ideal for high-dimensional data where magnitude is less important than direction.
+
+```python
+import numpy as np
+
+def cosine_similarity(a, b):
+    """
+    Cosine similarity: cos(θ) = (a·b) / (|a|×|b|)
+    Range: [-1, 1] where 1 = identical, 0 = orthogonal, -1 = opposite
+    """
+    dot_product = np.dot(a, b)
+    norm_a = np.linalg.norm(a)
+    norm_b = np.linalg.norm(b)
+    
+    return dot_product / (norm_a * norm_b)
+
+# Example usage
+vec1 = [0.5, 0.3, 0.8, 0.1]
+vec2 = [0.4, 0.4, 0.7, 0.2]
+similarity = cosine_similarity(vec1, vec2)
+# Result: 0.95 (highly similar)
+```
+
+**Why Cosine Similarity?**
+- **Magnitude Independence**: Focuses on direction, not size
+- **Normalisation**: Always bounded between -1 and 1
+- **Interpretability**: Easy to understand angular relationships
+- **Efficiency**: Fast computation with dot products
+
+### Topological Similarity
+
+Recent advances in topological data analysis have introduced topological similarity measures that capture the shape and structure of data beyond simple geometric distances.
+
+**Persistent Homology Approach:**
+```python
+def topological_similarity(embedding1, embedding2):
+    """
+    Topological similarity based on persistent homology
+    Captures structural features that geometric distances miss
+    """
+    # Compute persistence diagrams
+    pd1 = compute_persistence_diagram(embedding1)
+    pd2 = compute_persistence_diagram(embedding2)
+    
+    # Wasserstein distance between diagrams
+    return wasserstein_distance(pd1, pd2)
+```
+
+**Applications:**
+- **Protein structure comparison**
+- **Time series analysis**
+- **Network topology analysis**
+- **Image shape recognition**
+
+### Euclidean Distance
+
+The most intuitive distance metric, measuring straight-line distance in vector space:
+
+```python
+def euclidean_distance(a, b):
+    """
+    Euclidean distance: √(Σ(a_i - b_i)²)
+    Sensitive to all dimensional differences
+    """
+    return np.sqrt(np.sum((a - b) ** 2))
+
+# L2 normalisation for fair comparison
+def normalized_euclidean(a, b):
+    a_norm = a / np.linalg.norm(a)
+    b_norm = b / np.linalg.norm(b)
+    return euclidean_distance(a_norm, b_norm)
+```
+
+**Trade-offs:**
+- **Pros**: Intuitive, preserves magnitude information
+- **Cons**: Sensitive to dimensionality, can be dominated by outlier dimensions
+
+## The VLQ-ADC Algorithm
+
+### Vector Quantisation Meets Asymmetric Distance Computation
+
+The experimental VLQ-ADC (Vector Locally-adaptive Quantisation with Asymmetric Distance Computation) algorithm represents a cutting-edge approach to accelerating vector search through intelligent quantisation.
+
+<Steps>
+
+<Step>
+
+### Core Innovation
+
+VLQ-ADC combines two powerful techniques:
+- **Locally-adaptive quantisation**: Adapts compression based on local vector distribution
+- **Asymmetric distance computation**: Uses different representations for query and database vectors
+
+```python
+class VLQ_ADC:
+    def __init__(self, n_centroids=256, n_subvectors=8):
+        self.n_centroids = n_centroids
+        self.n_subvectors = n_subvectors
+        self.codebooks = []
+        
+    def train_quantisation(self, vectors):
+        """
+        Train locally-adaptive quantizers for each subspace
+        """
+        subvector_size = len(vectors[0]) // self.n_subvectors
+        
+        for i in range(self.n_subvectors):
+            start = i * subvector_size
+            end = (i + 1) * subvector_size
+            
+            subvectors = [v[start:end] for v in vectors]
+            codebook = self.learn_adaptive_codebook(subvectors)
+            self.codebooks.append(codebook)
+    
+    def encode(self, vector):
+        """
+        Encode vector using locally-adaptive quantisation
+        """
+        codes = []
+        subvector_size = len(vector) // self.n_subvectors
+        
+        for i, codebook in enumerate(self.codebooks):
+            start = i * subvector_size
+            end = (i + 1) * subvector_size
+            subvector = vector[start:end]
+            
+            # Find closest centroid with local adaptation
+            code = self.find_adaptive_centroid(subvector, codebook)
+            codes.append(code)
+            
+        return codes
+```
+
+</Step>
+
+<Step>
+
+### Performance Characteristics
+
+**Compression Ratio**: 8-32x reduction in memory usage
+**Search Speed**: 2-4x faster than traditional PQ methods
+**Accuracy**: Maintains 90-95% recall at high compression ratios
+
+**Trade-offs:**
+- **Memory**: Significant savings through quantisation
+- **Preprocessing**: Higher computational cost during training
+- **Accuracy**: Some loss in precision due to quantisation
+- **Complexity**: More sophisticated than standard approaches
+
+</Step>
+
+</Steps>
+
+### Experimental Results
+
+Current research shows VLQ-ADC achieving:
+- **40-60% memory reduction** compared to uncompressed vectors
+- **2-3x speed improvement** in high-dimensional spaces
+- **Maintained accuracy** for most practical applications
+
+<Callout type="warn">
+**Research Status**: VLQ-ADC is still experimental and not yet widely deployed in production systems. Standard HNSW with cosine similarity remains the industry standard.
+</Callout>
+
+## Antarys HNSW Optimisation
+
+### Breaking Performance Barriers
+
+At Antarys, we've developed a modified HNSW implementation that delivers unprecedented performance improvements:
+- **1.5-2x better performance** for text embeddings
+- **7-8x better performance** for image embeddings
+
+These gains aren't just theoretical—they translate directly into faster AI applications and lower infrastructure costs.
+
+<Steps>
+
+<Step>
+
+### The Vision: Natural Language Computing
+
+Our optimisation stems from a fundamental belief about the future of computing:
+
+**Natural language will become the primary interface for human-computer interaction.** As AI systems become more sophisticated, the bottleneck shifts from computational power to the speed of knowledge insertion and recall.
+
+*Imagine applications that can:*
+- Instantly understand and respond to complex queries
+- Process and integrate new information in real-time  
+- Provide contextually relevant responses with minimal latency
+- Scale to handle millions of concurrent semantic operations
+
+This future requires vector search systems that operate at unprecedented speeds while maintaining high accuracy.
+
+</Step>
+
+<Step>
+
+### Implementation-Level Innovations
+
+Our performance gains derive from **implementation optimisations rather than algorithmic changes**. The core HNSW algorithm remains mathematically sound.
+
+```python
+class StandardHNSW:
+    def search(self, query_vector):
+        with self.write_lock:  # Bottleneck: Global write lock
+            current_layer = self.top_layer
+            candidates = self.entry_points
+            
+            while current_layer >= 0:
+                # Traverse and update metadata
+                candidates = self.search_layer(
+                    query_vector, candidates, current_layer
+                )
+                current_layer -= 1
+                
+        return candidates
+```
+
+StandardHNSW has to maintain a global execution lock to avoid data race conditions so we don't corrupt metadata, which will decrease search result quality, but our proprietary implementation allows us to carefully snapshot additional data so we don't have to apply thread lock per search traversal!
+
+</Step>
+
+<Step>
+
+### The Write Lock Challenge
+
+In standard HNSW implementations, every graph traversal iteration requires updating metadata and maintaining thread safety. This creates a **write lock bottleneck** that serializes operations and dramatically reduces throughput.
+
+**Our Innovation**: We've developed a novel approach that bypasses this lock mechanism while preserving search quality. The technique involves:
+
+1. **Architectural fine-tuning** at the data structure level
+2. **Thread-local optimisations** for parallel execution
+3. **Metadata management** that doesn't require global synchronisation
+4. **Quality preservation** through intelligent coordination patterns
+
+<Callout type="info">
+**Trade Secret**: The specific implementation details remain proprietary, representing a significant competitive advantage in the vector database market.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Measurable Impact
+
+Our optimisations deliver concrete benefits:
+
+**Text Embeddings (1.5-2x improvement):**
+- Standard: ~75 queries/second
+- Optimized: ~130 queries/second
+- Use cases: Semantic search, RAG systems, document similarity
+
+**Image Embeddings (7-8x improvement):**
+- Standard: ~12 queries/second  
+- Optimized: ~85 queries/second
+- Use cases: Visual search, content moderation, similarity detection
+
+**System-Level Benefits:**
+- **Lower latency**: Sub-millisecond query response times
+- **Higher throughput**: More concurrent users per server
+- **Reduced costs**: Better resource utilisation
+- **Improved UX**: Faster AI application response times
+
+</Step>
+
+</Steps>
+
+### Technical Philosophy
+
+Our approach balances three critical factors:
+
+1. **Performance**: Maximum speed for real-world workloads
+2. **Quality**: Maintained accuracy with 99%+ recall
+3. **Simplicity**: Clean APIs that developers can easily integrate
+
+By focusing on implementation rather than algorithmic complexity, we deliver immediate benefits without requiring developers to learn new paradigms or modify existing code.
+
+## Real-World HNSW Applications
+
+### Beyond Vector Search
+
+While HNSW is best known for powering vector databases, its applications extend far beyond traditional search scenarios:
+
+<Cards>
+
+<Card title="Protein Structure Analysis">
+**Bioinformatics Applications**
+
+- Protein folding prediction and comparison
+- Drug discovery through molecular similarity
+- Genetic sequence analysis and classification
+- Structural biology research acceleration
+</Card>
+
+<Card title="Social Network Analysis">
+**Graph Analytics at Scale**
+
+- Community detection in social networks
+- Influence propagation modeling
+- Recommendation system optimisation
+- Network topology analysis
+</Card>
+
+<Card title="Audio Processing">
+**Multimedia Applications**
+
+- Music recommendation engines
+- Audio fingerprinting and identification
+- Speech pattern recognition
+- Sound effect matching in media production
+</Card>
+
+<Card title="Industrial Optimisation">
+**Manufacturing and Logistics**
+
+- Supply chain optimisation
+- Quality control pattern recognition
+- Predictive maintenance modeling
+- Resource allocation algorithms
+</Card>
+
+</Cards>
+
+### Emerging Applications
+
+**Computer Vision:**
+- Object detection and classification
+- Image similarity for creative tools
+- Medical imaging analysis
+- Autonomous vehicle perception
+
+**Natural Language Processing:**
+- Semantic search and question answering
+- Document classification and clustering
+- Machine translation optimisation
+- Conversational AI enhancement
+
+**Financial Services:**
+- Fraud detection through pattern matching
+- Risk assessment modeling
+- Algorithmic trading strategies
+- Customer behavior analysis
+
+**Scientific Computing:**
+- Climate modeling and analysis
+- Astronomical data processing
+- Materials science simulation
+- Quantum computing optimisation
+
+<Callout type="info">
+**Industry Adoption**: Major tech companies including Google, Microsoft, Amazon, and Meta rely on HNSW-based systems to power their AI applications, processing billions of vector operations daily.
+</Callout>
+
+## The Future of Vector Search
+
+### Trends and Innovations
+
+The vector search landscape continues to evolve rapidly:
+
+**Hardware Acceleration:**
+- GPU-optimized HNSW implementations
+- Custom ASIC designs for vector operations
+- Neuromorphic computing architectures
+- Quantum-inspired algorithms
+
+**Algorithmic Advances:**
+- Learned index structures for vector data
+- Adaptive quantisation techniques
+- Multi-modal embedding spaces
+- Federated vector search across distributed systems
+
+**Integration Patterns:**
+- Native vector search in traditional databases
+- Hybrid systems combining vector and relational data
+- Edge deployment for real-time applications
+- Streaming vector processing pipelines
+
+### Preparing for Tomorrow
+
+As we move toward a future where natural language becomes the primary computing interface, vector search systems must evolve to support:
+
+- **Real-time learning** from user interactions
+- **Multi-modal understanding** across text, image, audio, and video
+- **Contextual awareness** that adapts to user intent and environment
+- **Scalable deployment** from edge devices to massive data centers
+
+The optimisations we've developed at Antarys represent just the beginning of this journey. By focusing on implementation-level performance improvements while maintaining algorithmic soundness, we're building the foundation for the next generation of AI-powered applications.
+
+---
+
+## Conclusion
+
+HNSW has revolutionized how we approach similarity search in high-dimensional spaces, enabling the AI applications we use every day. From semantic search to recommendation systems, from image recognition to drug discovery, HNSW powers the intelligent systems that increasingly shape our world.
+
+The journey from understanding vector representations to optimizing graph traversals represents one of the most impactful algorithmic advances in modern computer science. As we continue pushing the boundaries of what's possible with vector search, the promise of truly intelligent, responsive AI systems comes ever closer to reality.
+
+**Key Takeaways:**
+- Vector search transforms any data type into geometric similarity problems
+- HNSW balances speed and accuracy through hierarchical graph structures
+- Implementation optimisations can deliver dramatic performance improvements
+- Applications extend far beyond traditional search into virtually every domain
+- The future of computing will be built on fast, accurate vector operations
+
+*Ready to experience next-generation vector search performance? Try [Antarys](https://antarys.ai) and see the difference optimized HNSW can make in your applications.*

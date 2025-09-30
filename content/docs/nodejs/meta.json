@@ -2,6 +2,7 @@
   "title": "Node.js Client",
   "pages": [
     "index",
-    "vector_ops"
+    "vector_ops",
+    "embed_ops"
   ]
 }

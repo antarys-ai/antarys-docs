@@ -1,0 +1,288 @@
+---
+title: Embedding Operations
+description: Generate text embeddings using Antarys's built-in embedding models for semantic search and similarity matching.
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+# Embedding Operations
+
+Generate vector embeddings from text using Antarys's built-in embedding models.
+
+<Callout type="info">
+**Requirement:** The Antarys server must be started with `--enable-embedding` flag and have an embedding model downloaded.
+</Callout>
+
+## Quick Start
+
+```python
+import antarys
+
+# Initialize client
+client = await antarys.create_client("http://localhost:8080")
+
+# Generate embeddings
+embeddings = await antarys.embed(client, [
+    "First document",
+    "Second document",
+    "Third document"
+])
+
+# Each embedding is a list of floats
+print(f"Generated {len(embeddings)} embeddings")
+print(f"Dimensions: {len(embeddings[0])}")
+```
+
+## Basic Operations
+
+### Single Text Embedding
+
+```python
+# Embed a single text
+embedding = await antarys.embed(client, "Hello, World!")
+
+# Returns a single vector (list of floats)
+print(f"Embedding dimensions: {len(embedding)}")
+```
+
+### Multiple Text Embeddings
+
+```python
+# Embed multiple texts in one call
+texts = [
+    "Python is a programming language",
+    "JavaScript is used for web development",
+    "Machine learning is a subset of AI"
+]
+
+embeddings = await antarys.embed(client, texts, batch_size=256)
+
+# Returns list of vectors
+for i, emb in enumerate(embeddings):
+    print(f"Text {i+1}: {len(emb)} dimensions")
+```
+
+## Search-Optimized Embeddings
+
+### Query Embeddings
+
+Use this when generating embeddings for search queries:
+
+```python
+# Automatically adds "query: " prefix for better retrieval
+query_embedding = await antarys.embed_query(
+    client,
+    "What is machine learning?"
+)
+```
+
+### Document Embeddings
+
+Use this when generating embeddings for documents to be searched:
+
+```python
+# Automatically adds "passage: " prefix for better retrieval
+documents = [
+    "Python is a versatile programming language",
+    "JavaScript powers modern web applications",
+    "Go is efficient for concurrent programming"
+]
+
+doc_embeddings = await antarys.embed_documents(
+    client,
+    documents=documents,
+    batch_size=100,
+    show_progress=True
+)
+```
+
+## Text Similarity
+
+Calculate similarity between two texts:
+
+```python
+# Returns cosine similarity score (0 to 1)
+score = await antarys.text_similarity(
+    client,
+    "machine learning",
+    "artificial intelligence"
+)
+
+print(f"Similarity: {score:.4f}")
+```
+
+## Advanced Usage
+
+### Using the Operations Interface
+
+For more control, use the `EmbeddingOperations` interface directly:
+
+<Tabs items={['Basic Usage', 'With Metadata', 'Batch Processing']}>
+
+<Tab value="Basic Usage">
+
+```python
+# Get embedding operations interface
+embed_ops = client.embedding_operations()
+
+# Generate embeddings
+embeddings = await embed_ops.embed(
+    texts=["Text 1", "Text 2"],
+    batch_size=256
+)
+```
+
+</Tab>
+
+<Tab value="With Metadata">
+
+```python
+# Get embeddings with model metadata
+results = await embed_ops.embed_with_metadata([
+    "First document",
+    "Second document"
+])
+
+for result in results:
+    print(f"Text: {result['text']}")
+    print(f"Model: {result['model']}")
+    print(f"Dimensions: {result['dimensions']}")
+    print(f"Embedding: {result['embedding'][:5]}...")
+```
+
+</Tab>
+
+<Tab value="Batch Processing">
+
+```python
+# Process large batches with progress tracking
+large_dataset = [f"Document {i}" for i in range(1000)]
+
+embeddings = await embed_ops.embed_batch(
+    texts=large_dataset,
+    batch_size=100,
+    show_progress=True
+)
+
+print(f"Processed {len(embeddings)} embeddings")
+```
+
+</Tab>
+
+</Tabs>
+
+## Complete Example
+
+Semantic search workflow combining embeddings and vector operations:
+
+```python
+import antarys
+import asyncio
+
+async def semantic_search_example():
+    # Initialize client
+    client = await antarys.create_client("http://localhost:8080")
+    
+    # Create collection directly
+    await client.create_collection(
+        name="documents",
+        dimensions=768,
+        enable_hnsw=True
+    )
+    
+    # Prepare documents
+    documents = [
+        "Python is great for data science",
+        "JavaScript powers web applications",
+        "Machine learning transforms industries",
+        "Neural networks process complex patterns"
+    ]
+    
+    # Generate document embeddings
+    doc_embeddings = await antarys.embed_documents(
+        client,
+        documents=documents
+    )
+    
+    # Insert into collection
+    vector_ops = client.vector_operations("documents")
+    records = [
+        {
+            "id": f"doc_{i}",
+            "values": embedding,
+            "metadata": {"text": doc}
+        }
+        for i, (doc, embedding) in enumerate(zip(documents, doc_embeddings))
+    ]
+    await vector_ops.upsert(records)
+    
+    # Search with a query
+    query = "What is used for AI?"
+    query_embedding = await antarys.embed_query(client, query)
+    
+    results = await vector_ops.query(
+        vector=query_embedding,
+        top_k=3,
+        include_metadata=True
+    )
+    
+    # Display results
+    print(f"Query: {query}\n")
+    for i, match in enumerate(results["matches"], 1):
+        print(f"{i}. {match['metadata']['text']}")
+        print(f"   Score: {match['score']:.4f}\n")
+    
+    # Cleanup
+    await client.close()
+
+
+asyncio.run(semantic_search_example())
+```
+
+## Supported Models
+
+Available embedding models (configured on server startup):
+
+| Model | Dimensions | Description |
+|-------|------------|-------------|
+| BGE-Base-EN | 768 | Base English model |
+| BGE-Base-EN-v1.5 | 768 | Improved base model |
+| BGE-Small-EN | 384 | Fast English model |
+| BGE-Small-EN-v1.5 | 384 | Default, fast and accurate |
+| BGE-Small-ZH-v1.5 | 512 | Chinese language model |
+
+<Callout type="info">
+The model is configured when starting the Antarys server with `--embedding-model <id>`.
+</Callout>
+
+## Performance Tips
+
+**Batch Processing**
+- Use batch sizes of 100-256 for optimal throughput
+- Enable `show_progress=True` for long-running operations
+
+**Query vs Document Prefixes**
+- Use `embed_query()` for search queries
+- Use `embed_documents()` for documents being indexed
+- Prefixes improve retrieval accuracy by 5-10%
+
+**Memory Management**
+- Process large datasets in chunks
+- Use streaming for very large corpora (100k+ documents)
+
+## Error Handling
+
+```python
+try:
+    embeddings = await antarys.embed(client, texts)
+except Exception as e:
+    if "not enabled" in str(e):
+        print("Embedding is not enabled on the server")
+    else:
+        print(f"Error: {e}")
+```
+
+<Callout type="warn">
+If you get a "not enabled" error, ensure the server is started with `--enable-embedding` and has a model downloaded.
+</Callout>

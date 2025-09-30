@@ -3,8 +3,10 @@
   "pages": [
     "index",
     "install",
+    "cli",
     "python",
     "nodejs",
-    "cookbook"
+    "cookbook",
+    "research"
   ]
 }

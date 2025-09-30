@@ -1,0 +1,397 @@
+---
+title: CLI Reference
+description: Complete command-line interface reference for Antarys server
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+# CLI Reference
+
+Complete guide to Antarys command-line options for server configuration and model management.
+
+## Commands
+
+### Start Server
+
+Start the Antarys vector database server with optional flags:
+
+```bash
+antarys [flags]
+```
+
+### Download Manager
+
+Manage ONNX runtime and embedding models:
+
+```bash
+antarys download <command>
+```
+
+### Version
+
+Display the Antarys version:
+
+```bash
+antarys version
+```
+
+## Server Flags
+
+### Core Configuration
+
+**`--port`** (default: `8080`)
+- API server port
+- Example: `antarys --port 9000`
+
+**`--data-dir`** (default: `./data`)
+- Path to vector data storage directory
+- Example: `antarys --data-dir /var/lib/antarys/data`
+
+**`--meta-dir`** (default: `./metadata`)
+- Path to metadata storage (BadgerDB)
+- Example: `antarys --meta-dir /var/lib/antarys/metadata`
+
+### Performance Tuning
+
+**`--shards`** (default: `16`)
+- Number of shards for parallel processing
+- Higher values improve write throughput
+- Example: `antarys --shards 32`
+
+**`--query-threads`** (default: `CPU count × 2`)
+- Number of concurrent query threads
+- Adjust based on your workload
+- Example: `antarys --query-threads 16`
+
+**`--cache-size`** (default: `10000`)
+- Size of result cache (number of entries)
+- Larger cache improves query performance
+- Example: `antarys --cache-size 50000`
+
+**`--batch-size`** (default: `5000`)
+- Default batch size for operations
+- Example: `antarys --batch-size 10000`
+
+**`--commit-interval`** (default: `60`)
+- Auto-commit interval in seconds
+- Lower values increase durability, higher values improve performance
+- Example: `antarys --commit-interval 30`
+
+### Indexing Options
+
+**`--enable-hnsw`** (default: `true`)
+- Enable HNSW (Hierarchical Navigable Small World) indexing
+- Provides fast approximate nearest neighbor search
+- Example: `antarys --enable-hnsw=false`
+
+**`--enable-pq`** (default: `false`)
+- Enable Product Quantization for memory efficiency
+- Reduces memory usage at slight accuracy cost
+- Example: `antarys --enable-pq`
+
+**`--similarity`** (default: `0.7`)
+- Default similarity threshold (0.0 to 1.0)
+- Example: `antarys --similarity 0.85`
+
+**`--max-results`** (default: `100`)
+- Maximum number of results per query
+- Example: `antarys --max-results 200`
+
+### GPU Acceleration
+
+<Callout type='warn'>
+GPU Support is backed by OpenCL and still experimental
+</Callout>
+
+**`--enable-gpu`** (default: `false`)
+- Enable GPU acceleration for vector operations
+- Requires compatible GPU and drivers
+- Example: `antarys --enable-gpu`
+
+**`--optimization`** (default: `3`)
+- GPU optimization level (0-3)
+- Higher values provide better performance
+- Example: `antarys --optimization 2`
+
+### Embedding Support
+
+**`--enable-embedding`** (default: `false`)
+- Enable built-in embedding generation
+- Requires ONNX runtime and model to be downloaded
+- Example: `antarys --enable-embedding`
+
+**`--embedding-model`** (default: `4`)
+- Embedding model ID to use (see model list below)
+- Example: `antarys --enable-embedding --embedding-model 2`
+
+<Callout type="info">
+**Embedding Models:**
+- 1: BGE-Base-EN (768 dimensions)
+- 2: BGE-Base-EN-v1.5 (768 dimensions)
+- 3: BGE-Small-EN (384 dimensions)
+- 4: BGE-Small-EN-v1.5 (384 dimensions) - Default
+- 5: BGE-Small-ZH-v1.5 (512 dimensions)
+</Callout>
+
+## Download Commands
+
+### Download ONNX Runtime
+
+Download the ONNX runtime required for embedding generation:
+
+```bash
+antarys download onnx
+```
+
+The runtime is automatically selected for your platform:
+- **macOS**: Universal binary (Intel + ARM)
+- **Linux ARM64**: ARM-optimized runtime
+- **Linux x64**: x86-64 optimized runtime
+
+**Example Output:**
+```
+Downloading ONNX runtime...
+/home/user/.antarys/libonnxruntime.1.22.0.dylib
+ONNX runtime downloaded successfully
+```
+
+If already downloaded:
+```
+ONNX runtime is already downloaded and available
+```
+
+### Download Embedding Model
+
+Download a specific embedding model:
+
+```bash
+antarys download embedding <model_id>
+```
+
+**Examples:**
+
+```bash
+# Download default model (ID: 4)
+antarys download embedding
+
+# Download BGE-Base-EN-v1.5
+antarys download embedding 2
+
+# Download Chinese model
+antarys download embedding 5
+```
+
+**Output:**
+```
+Downloading embedding model...
+[Progress bar]
+Embedding model 2 downloaded successfully
+```
+
+### List Available Models
+
+View all embedding models and their status:
+
+```bash
+antarys download list-embeddings
+```
+
+**Output:**
+```
+Available embedding models:
+ID  Name                          Dimensions  Downloaded  Description
+--  ----                          ----------  ----------  -----------
+1   fast-bge-base-en             768         No          Base English model
+2   fast-bge-base-en-v1.5        768         Yes         Improved base model
+3   fast-bge-small-en            384         No          Fast English model
+4   fast-bge-small-en-v1.5       384         Yes         Default, fast and accurate
+5   fast-bge-small-zh-v1.5       512         No          Chinese language model
+```
+
+### Remove Cached Model
+
+Delete a downloaded embedding model:
+
+```bash
+antarys download remove embedding <model_id>
+```
+
+**Example:**
+```bash
+antarys download remove embedding 2
+```
+
+**Output:**
+```
+Embedding model 2 (fast-bge-base-en-v1.5) removed successfully
+```
+
+## Configuration Examples
+
+### Development Setup
+
+Basic development server with embedding support:
+
+```bash
+# Download requirements
+antarys download onnx
+antarys download embedding 4
+
+# Start server
+antarys --enable-embedding --port 8080
+```
+
+### Production Setup
+
+High-performance production configuration:
+
+```bash
+antarys \
+  --port 8080 \
+  --data-dir /var/lib/antarys/data \
+  --meta-dir /var/lib/antarys/metadata \
+  --shards 32 \
+  --query-threads 32 \
+  --cache-size 100000 \
+  --batch-size 10000 \
+  --commit-interval 30 \
+  --enable-hnsw \
+  --enable-embedding \
+  --embedding-model 4
+```
+
+### GPU-Accelerated Setup
+
+Maximum performance with GPU acceleration:
+
+```bash
+antarys \
+  --enable-gpu \
+  --optimization 3 \
+  --shards 64 \
+  --query-threads 64 \
+  --cache-size 200000 \
+  --enable-hnsw \
+  --enable-embedding \
+  --embedding-model 2
+```
+
+### Memory-Optimized Setup
+
+Configuration for memory-constrained environments:
+
+```bash
+antarys \
+  --shards 8 \
+  --query-threads 8 \
+  --cache-size 5000 \
+  --batch-size 2000 \
+  --enable-pq \
+  --enable-embedding \
+  --embedding-model 3
+```
+
+## Storage Locations
+
+All cached files are stored in the user's home directory:
+
+**Directory Structure:**
+```
+~/.antarys/
+├── libonnxruntime.1.22.0.dylib          # ONNX runtime (macOS)
+├── libonnxruntime_arm64.so              # ONNX runtime (Linux ARM64)
+├── libonnxruntime_x64.so                # ONNX runtime (Linux x64)
+├── fast-bge-base-en/                    # Embedding model
+│   ├── config.json
+│   ├── model_optimized.onnx
+│   ├── ort_config.json
+│   ├── tokenizer.json
+│   └── vocab.txt
+└── fast-bge-small-en-v1.5/              # Embedding model
+    ├── config.json
+    ├── model_optimized.onnx
+    └── ...
+```
+
+## Environment Variables
+
+While Antarys primarily uses command-line flags, you can set defaults using environment variables in wrapper scripts:
+
+```bash
+export ANTARYS_PORT=8080
+export ANTARYS_DATA_DIR=/var/lib/antarys/data
+export ANTARYS_ENABLE_EMBEDDING=true
+```
+
+## Error Messages
+
+### Embedding Not Enabled
+
+```
+Error: Embedding generation is not enabled
+```
+
+**Solution:** Start server with `--enable-embedding` flag
+
+### ONNX Runtime Not Found
+
+```
+Error: ONNX runtime not found. Please run the following command to download it:
+  antarys download onnx
+```
+
+**Solution:** Download ONNX runtime before enabling embeddings
+
+### Model Not Downloaded
+
+```
+Error: Embedding model 2 (fast-bge-base-en-v1.5) is not downloaded. Please run:
+  antarys download embedding 2
+```
+
+**Solution:** Download the required model
+
+### Corrupted Files
+
+```
+Error: Corrupted ONNX runtime detected. Removing corrupt file...
+Please run the following command to re-download ONNX runtime:
+  antarys download onnx
+```
+
+**Solution:** Re-download the corrupted file
+
+## Validation on Startup
+
+When embedding is enabled, Antarys performs automatic validation:
+
+1. **Platform Check**: Verifies OS is supported (macOS/Linux)
+2. **Runtime Check**: Validates ONNX runtime exists and is not corrupted
+3. **Model Check**: Validates embedding model exists and is not corrupted
+4. **Compatibility Check**: Ensures model works with ONNX runtime
+
+If any check fails, the server will not start and will display clear instructions for resolution.
+
+## Performance Recommendations
+
+**For High Throughput:**
+- Increase `--shards` (32-64)
+- Increase `--query-threads` (32-64)
+- Increase `--batch-size` (10000+)
+- Enable `--enable-gpu` if available
+
+**For Low Latency:**
+- Increase `--cache-size` (50000-100000)
+- Enable `--enable-hnsw`
+- Keep `--commit-interval` higher (60-120)
+
+**For Memory Efficiency:**
+- Enable `--enable-pq`
+- Reduce `--shards` (8-16)
+- Reduce `--cache-size` (5000-10000)
+- Use smaller embedding models (ID: 3 or 4)
+
+<Callout type="warn">
+**Important:** Always download ONNX runtime and models before starting the server with `--enable-embedding`. The server will not start if required files are missing or corrupted.
+</Callout>

@@ -1,0 +1,191 @@
+---
+title: "Introducing Built-in Embedding Generation"
+description: "Antarys now handles the complete vector pipeline—from raw text to searchable embeddings—without external dependencies."
+date: 2025-01-15
+---
+
+import { Callout } from 'fumadocs-ui/components/callout'
+
+# Introducing Built-in Embedding Generation
+
+Vector databases have always promised a simple workflow: take your data, convert it to vectors, and query it semantically. In practice, this has required juggling multiple services—an embedding API, a vector database, and the infrastructure to connect them.
+
+Today, we're changing that with Antarys's built-in embedding API.
+
+## The Traditional Pipeline
+
+Building semantic search typically looks like this:
+
+```
+Raw Data → External Embedding API → Vector Database → Query Results
+           (OpenAI, Cohere, etc.)    (Separate service)
+```
+
+This works, but introduces friction:
+- **Multiple API calls**: Your data makes a round trip to an external service before reaching storage
+- **Network latency**: Each embedding request adds milliseconds or seconds
+- **API costs**: Pay per embedding, which adds up quickly at scale
+- **Dependency risk**: Your search depends on external service availability
+- **Data privacy**: Sensitive data leaves your infrastructure
+
+## The Antarys Approach
+
+With built-in embedding generation, the pipeline simplifies:
+
+```
+Raw Data → Antarys (Embedding + Storage) → Query Results
+           (Single service)
+```
+
+Here's what this looks like in practice:
+
+```python
+import antarys
+
+client = await antarys.create_client("http://localhost:8080")
+
+# Your raw documents
+documents = [
+    "Python is great for data science",
+    "JavaScript powers modern web apps",
+    "Machine learning transforms industries"
+]
+
+# Generate embeddings directly
+embeddings = await antarys.embed_documents(client, documents)
+
+# Store them immediately
+vector_ops = client.vector_operations("docs")
+records = [
+    {
+        "id": f"doc_{i}",
+        "values": embedding,
+        "metadata": {"text": doc}
+    }
+    for i, (doc, embedding) in enumerate(zip(documents, embeddings))
+]
+await vector_ops.upsert(records)
+
+# Query semantically
+query_emb = await antarys.embed_query(client, "AI applications")
+results = await vector_ops.query(vector=query_emb, top_k=5)
+```
+
+Three operations. One service. No external dependencies.
+
+## What This Enables
+
+**Faster Development**
+
+Skip the boilerplate of integrating multiple APIs. Deploy semantic search in minutes instead of hours.
+
+**Lower Latency**
+
+Embeddings generate on the same server that stores them. No network hops to external services.
+
+**Predictable Costs**
+
+No per-embedding API fees. Run as many embeddings as your hardware supports.
+
+**Data Privacy**
+
+Your text never leaves your infrastructure. Critical for regulated industries or sensitive data.
+
+**Simpler Operations**
+
+One service to deploy, monitor, and scale. No coordination between embedding and storage layers.
+
+## The Technical Foundation
+
+Antarys uses optimized ONNX models for embedding generation:
+
+- **BGE models**: State-of-the-art retrieval performance from BAAI
+- **Quantized weights**: Smaller memory footprint without accuracy loss
+- **CPU optimization**: Fast inference without GPU requirements
+- **Batched processing**: Efficient throughput for large datasets
+
+The embedding API validates model integrity on startup, ensuring corrupted downloads don't cause runtime failures.
+
+## When to Use External Embedding APIs
+
+Built-in embeddings aren't always the answer:
+
+- **Multilingual requirements**: If you need 100+ languages, external APIs may have broader coverage
+- **Domain-specific models**: Specialized models (medical, legal, code) often come from external providers
+- **Largest models**: If you need embeddings larger than 768 dimensions
+- **GPU constraints**: External APIs handle GPU infrastructure for you
+
+For most applications—semantic search, content recommendations, document clustering—built-in embeddings provide the best balance of simplicity, performance, and cost.
+
+## Getting Started
+
+Enable embedding generation when starting Antarys:
+
+```bash
+# Download requirements
+antarys download onnx
+antarys download embedding 4
+
+# Start server with embeddings
+antarys --enable-embedding --embedding-model 4
+```
+
+Then use the embedding API from any client:
+
+```typescript
+import { createClient, embed } from 'antarys';
+
+const client = createClient('http://localhost:8080');
+const embeddings = await embed(client, ['text 1', 'text 2']);
+```
+
+## Future Roadmap
+
+### Current State
+The embedding API generates text embeddings from raw data using CPU-optimized ONNX models. This works well for most applications, providing fast inference without GPU requirements.
+
+### Next: GPU-Accelerated Embeddings
+The next update will add GPU support for parallel embedding generation. This will dramatically increase throughput for large-scale batch operations—think millions of documents instead of thousands.
+
+### Unified Memory Buffers
+A major optimization coming soon: when you generate embeddings and immediately store them in a collection, Antarys will reuse the same memory buffers throughout the pipeline.
+
+Here's how it works:
+
+```python
+# Future API (not yet available)
+embeddings = await antarys.embed_documents(
+    client, 
+    documents,
+    collection="docs",  # Specify target collection
+    auto_upsert=True    # Store directly
+)
+```
+
+When you specify a target collection, Antarys will:
+1. Know the data size upfront
+2. Allocate memory buffers once
+3. Generate embeddings in those buffers
+4. Store vectors from the same buffers
+5. Reuse buffers for subsequent operations
+
+This eliminates memory copies between embedding generation and storage, cutting latency significantly for large batches.
+
+### Planned: Vector Database Events
+Native pub/sub notifications for database changes:
+
+```python
+# Planned API (design phase)
+@client.on_vector_change("docs")
+async def handle_change(event):
+    if event.type == "upsert":
+        print(f"New vectors: {event.ids}")
+    elif event.type == "commit":
+        print("Data persisted to disk")
+```
+
+This enables reactive applications that respond to database changes without polling—useful for cache invalidation, index rebuilding, or triggering downstream workflows.
+
+---
+
+**Platform Support:** Built-in embeddings currently support macOS and Linux (ARM64/x64). The API accepts any vectors, so you can still use external embedding providers on all platforms.
