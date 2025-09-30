@@ -10,7 +10,7 @@ import { LandingFooter } from "@/components/ui/landing-footer";
 export default function HomePage() {
   return (
     <>
-      <div className="w-full pt-52 pb-42 rounded-md flex md:items-center md:justify-center antialiased bg-grid-white/[0.02] relative overflow-hidden">
+      <div className="w-full pt-52 pb-42 flex md:items-center md:justify-center antialiased bg-grid-white/[0.02] relative overflow-hidden">
         <div className="flex flex-col items-end absolute -right-60 -top-10 blur-xl z-0 ">
           <div className="h-[11rem] rounded-full w-[60rem] z-1 bg-gradient-to-b blur-[6rem] from-white to-sky-600"></div>
           <div className="h-[12rem] rounded-full w-[90rem] z-1 bg-gradient-to-b blur-[6rem] from-purple-900 to-yellow-400"></div>
